@@ -17,6 +17,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - name: Prepare web folder
+        run: |
+          mkdir -p www
+          cp index.html manifest.webmanifest icon.svg sw.js www/
       - run: npm install
       - run: npx cap add android
       - run: npx cap sync android

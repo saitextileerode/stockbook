@@ -62,6 +62,11 @@ td button{all:unset;display:block;width:100%;min-height:52px;line-height:52px;cu
 td button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
 td button.zero{color:var(--muted);font-weight:400} td button.neg{color:var(--down)}
 .row-actions{display:flex;gap:8px;flex-wrap:wrap}
+.bname{all:unset;font-weight:600;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;color:var(--accent)}
+.bname:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.draft{background:var(--surface);width:100%;min-height:48px;padding:6px 12px;font-weight:500;text-align:left;border:1px solid var(--line);border-radius:10px}
+.btn.danger{background:var(--down);border-color:var(--down);color:#fff}
+details.adv summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center}
 
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
 .card h2{font-size:1.1rem}
@@ -133,7 +138,7 @@ td button.zero{color:var(--muted);font-weight:400} td button.neg{color:var(--dow
 <div id="toast" class="toast" hidden></div>
 
 <script>
-const APP_VERSION = "v2 (2026-11-14)";
+const APP_VERSION = "v3 (2026-11-14)";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const f = n => Math.round(n).toLocaleString("en-IN");
@@ -143,7 +148,7 @@ const key = (b, c) => b + "|" + c;
 const LS = {get(k){ try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch (e) {} }};
 
 const DEFAULT_BRANDS = ["Jupiter","Tata","Silver","Popular","Blue Star","World Cup","VIP","Gold King"];
-const KEY = "sb-local-v1", LOG_LIMIT = 1000, DEFAULT_MODEL = "gemini-2.5-flash";
+const KEY = "sb-local-v1", LOG_LIMIT = 1000, DEFAULT_MODEL = "gemini-3.6-flash";
 let DB = null, storageOk = true, pendingImport = null;
 let S = null, tab = "stock", R = null, scanning = false, scanErr = "", addKind = "in", ctl = null, busy = false, shopId = "";
 let M = {brand: "", colour: "White", pcs: ""}, draft = [], addErr = "";
@@ -192,6 +197,25 @@ function applyBrand(shop, body){
   if (shop.brands.some(b => b.toLowerCase() === name.toLowerCase())) throw new Error("this brand already exists");
   shop.brands.push(name); shop.rev++;
 }
+function purgeBrandLog(shop, brand){
+  const pre = brand + "|";
+  shop.log.forEach(e => { e.lines = e.lines.filter(l => !String(l.k).startsWith(pre)); });
+  shop.log = shop.log.filter(e => e.lines.length);
+}
+function applyClearBrand(shop, body){
+  const pre = body.brand + "|";
+  if (!shop.brands.includes(body.brand)) throw new Error("unknown brand");
+  Object.keys(shop.stock).forEach(k => { if (k.startsWith(pre)) delete shop.stock[k]; });
+  purgeBrandLog(shop, body.brand); shop.rev++;
+}
+function applyRemoveBrand(shop, body){
+  const pre = body.brand + "|";
+  if (!shop.brands.includes(body.brand)) throw new Error("unknown brand");
+  if (Object.keys(shop.stock).some(k => k.startsWith(pre) && shop.stock[k] !== 0)) throw new Error("brand still has stock");
+  Object.keys(shop.stock).forEach(k => { if (k.startsWith(pre)) delete shop.stock[k]; });
+  purgeBrandLog(shop, body.brand);
+  shop.brands = shop.brands.filter(x => x !== body.brand); shop.rev++;
+}
 async function mutate(path, body){
   try {
     const shop = DB.shops[shopId];
@@ -199,6 +223,8 @@ async function mutate(path, body){
     else if (path === "/set") applySet(shop, body);
     else if (path === "/undo") applyUndo(shop, body);
     else if (path === "/brands") applyBrand(shop, body);
+    else if (path === "/clearbrand") applyClearBrand(shop, body);
+    else if (path === "/removebrand") applyRemoveBrand(shop, body);
     persist(); S = shop; return storageOk;
   } catch (e) { toast("Could not save: " + e.message); return false; }
 }
@@ -232,20 +258,37 @@ function extractJson(text){
   const t = String(text || ""), fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
   return JSON.parse(fence ? fence[1] : t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1));
 }
+const GBASE = "https://generativelanguage.googleapis.com/v1beta/";
+async function pickModel(k, signal){
+  const res = await fetch(GBASE + "models?pageSize=200", {signal, headers: {"x-goog-api-key": k}});
+  if (!res.ok) return "";
+  const data = await res.json(), all = (data.models || []).filter(m => (m.supportedGenerationMethods || []).includes("generateContent")).map(m => String(m.name || "").replace(/^models\//, ""));
+  const ver = n => { const m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; };
+  const rank = list => list.sort((a, b) => ver(b) - ver(a) || a.length - b.length)[0] || "";
+  const flash = all.filter(n => /gemini-[\d.]+-flash/.test(n) && !/(lite|image|tts|live|audio|embedding|thinking|robotics|computer)/.test(n));
+  return rank(flash.filter(n => !/(preview|exp|latest)/.test(n))) || rank(flash) || rank(all.filter(n => /flash/.test(n) && !/(image|tts|live|audio)/.test(n)));
+}
 async function callGemini(kind, image, signal){
   const k = apiKey(), fail = c => { const e = new Error(c); e.code = c; return e; };
   if (!k) throw fail("no_key");
-  const model = (LS.get("sb-gmodel") || DEFAULT_MODEL).trim();
-  let res;
-  try {
-    res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {method: "POST", signal,
-      headers: {"content-type": "application/json", "x-goog-api-key": k},
-      body: JSON.stringify({contents: [{parts: [{inline_data: {mime_type: "image/jpeg", data: image}}, {text: scanPrompt(kind, S.brands)}]}],
-        generationConfig: {temperature: 0, responseMimeType: "application/json", maxOutputTokens: 8192}})});
-  } catch (e) { if (e.name === "AbortError") throw e; throw fail("network"); }
+  let model = (LS.get("sb-gmodel") || DEFAULT_MODEL).trim(), tried = false, res;
+  const body = JSON.stringify({contents: [{parts: [{inline_data: {mime_type: "image/jpeg", data: image}}, {text: scanPrompt(kind, S.brands)}]}],
+    generationConfig: {temperature: 0, responseMimeType: "application/json", maxOutputTokens: 8192}});
+  for (;;){
+    try {
+      res = await fetch(GBASE + "models/" + encodeURIComponent(model) + ":generateContent", {method: "POST", signal, headers: {"content-type": "application/json", "x-goog-api-key": k}, body});
+    } catch (e) { if (e.name === "AbortError") throw e; throw fail("network"); }
+    if (res.status === 404 && !tried){
+      tried = true;
+      let alt = "";
+      try { alt = await pickModel(k, signal); } catch (e) { if (e.name === "AbortError") throw e; }
+      if (alt && alt !== model){ model = alt; LS.set("sb-gmodel", alt); toast("Scan model switched to " + alt); continue; }
+    }
+    break;
+  }
   if (!res.ok){
-    const body = await res.text().catch(() => "");
-    if (res.status === 401 || res.status === 403 || (res.status === 400 && /API[ _]KEY/i.test(body))) throw fail("bad_key");
+    const txt = await res.text().catch(() => "");
+    if (res.status === 401 || res.status === 403 || (res.status === 400 && /API[ _]KEY/i.test(txt))) throw fail("bad_key");
     if (res.status === 404) throw fail("bad_model");
     if (res.status === 429) throw fail("rate_limited");
     throw fail("upstream");
@@ -312,6 +355,10 @@ function openSettings(){
       <div><label for="k">Gemini API key</label><input id="k" class="f" type="password" autocomplete="off" value="${esc(apiKey())}" placeholder="AIza..."></div>
       <div><label for="m">Model (change only if scanning stops working)</label><input id="m" class="f" autocomplete="off" value="${esc(LS.get("sb-gmodel") || DEFAULT_MODEL)}"></div>
       <div class="btns"><button class="btn" data-act="clear-key">Remove key</button><button class="btn primary" data-act="save-key">Save</button></div></div>
+    <div class="card"><details class="adv"><summary>Clear data (advanced)</summary>
+      <p class="hint" style="margin:6px 0 10px">Clears one brand completely: all its colours go to 0 and its history lines are deleted. This cannot be undone. Take a backup first.</p>
+      <div><label for="cb">Brand</label><select id="cb" class="f">${S.brands.map(b => `<option>${esc(b)}</option>`).join("")}</select></div>
+      <button class="btn danger" style="margin-top:10px;width:100%" data-act="clear-quality-ask">Clear this brand…</button></details></div>
     <button class="btn" data-act="close">Close</button>`);
 }
 async function download(file){
@@ -342,10 +389,11 @@ function render(){
 function renderStock(){
   const zero = S.brands.every(b => brandTotal(b) === 0);
   const head = "<thead><tr><th></th>" + COLOURS.map(c => `<th scope="col"><i class="dot ${c}"></i>${c}</th>`).join("") + "</tr></thead>";
-  const body = S.brands.map(b => `<tr><th scope="row">${esc(b)}<small>${f(brandTotal(b))} pcs</small></th>` +
+  const body = S.brands.map(b => `<tr><th scope="row"><button class="bname" data-act="brand" data-b="${esc(b)}">${esc(b)}</button><small>${f(brandTotal(b))} pcs</small></th>` +
     COLOURS.map(c => { const v = qty(b, c); return `<td><button data-act="cell" data-b="${esc(b)}" data-c="${c}" class="${v === 0 ? "zero" : v < 0 ? "neg" : ""}" aria-label="${esc(b)} ${c} ${f(v)}">${f(v)}</button></td>`; }).join("") + "</tr>").join("");
   $("#main").innerHTML = backupNote() + (zero ? `<div class="note" style="margin-bottom:12px">No opening stock yet. Tap each box and enter the number of pieces you have now.</div>` : "") +
     `<div class="gridwrap"><table>${head}<tbody>${body}</tbody></table></div>
+     <p class="hint" style="margin-top:8px">Tap a brand name to see its colours. Hold it to remove the brand.</p>
      <div class="row-actions" style="margin-top:12px"><button class="btn" data-act="add-brand">+ New brand</button>
      <button class="btn" data-act="dl" data-f="export.csv">Stock CSV</button><button class="btn" data-act="dl" data-f="backup.json">Back up / Share</button></div>`;
 }
@@ -497,6 +545,29 @@ async function saveCell(b, c){
   if (await mutate("/set", {brand: b, colour: c, to})){ closeSheet(); render(); toast("Stock saved"); }
 }
 
+function brandInfo(b){ const pre = b + "|"; let n = 0; S.log.forEach(e => { if (!e.undone && e.lines.some(l => String(l.k).startsWith(pre))) n++; }); return n; }
+function openBrand(b){
+  const rows = COLOURS.map(c => ({c, v: qty(b, c)}));
+  openSheet(`<h3>${esc(b)}</h3><p class="hint">Stock by colour. Tap a colour to correct it.</p>
+    <div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => `<button class="draft" data-act="cell" data-b="${esc(b)}" data-c="${r.c}"><span style="display:flex;align-items:center;gap:10px"><i class="dot ${r.c}" style="margin:0"></i>${r.c}</span><b style="font-variant-numeric:tabular-nums;${r.v === 0 ? "color:var(--muted);font-weight:400" : r.v < 0 ? "color:var(--down)" : ""}">${f(r.v)} pcs</b></button>`).join("")}</div>
+    <div class="tot" style="border-radius:10px"><div style="display:flex;justify-content:space-between;align-items:center"><small style="font-size:.95rem">Total ${esc(b)}</small><b>${f(brandTotal(b))} pcs</b></div></div>
+    <button class="btn" data-act="close">Close</button>`);
+}
+function openRemoveBrand(b){
+  const has = COLOURS.some(c => qty(b, c) !== 0) || Object.keys(S.stock).some(k => k.startsWith(b + "|") && S.stock[k] !== 0);
+  openSheet(`<h3>${esc(b)}</h3>
+    ${has ? `<div class="note">Cannot remove: ${f(brandTotal(b))} pcs are still in stock. Set the stock to 0 first (Settings > Clear data), then remove.</div><button class="btn" disabled>Remove brand</button>`
+      : `<p class="hint">No stock in this brand. Removing it deletes it from the list and deletes its history lines.</p><button class="btn danger" data-act="do-remove-brand" data-b="${esc(b)}">Remove brand</button>`}
+    <button class="btn" data-act="close">Close</button>`);
+}
+function openClearAsk(b){
+  const t = brandTotal(b), n = brandInfo(b);
+  openSheet(`<h3>Clear ${esc(b)}?</h3>
+    <div class="note">All colours of ${esc(b)} will be set to 0 (now ${f(t)} pcs) and ${n} history entr${n === 1 ? "y" : "ies"} will lose its ${esc(b)} lines. This cannot be undone.</div>
+    <button class="btn" data-act="dl" data-f="backup.json">Back up first</button>
+    <div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn danger" data-act="do-clear-quality" data-b="${esc(b)}">Clear ${esc(b)}</button></div>`);
+}
+
 /* ---------- history ---------- */
 function renderLog(){
   const rows = S.log.map(e => {
@@ -514,7 +585,12 @@ function renderLog(){
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-act]"); if (!b) return;
   const a = b.dataset.act;
+  if (a === "close" && b.id === "scrim" && Date.now() - lpOpenedAt < 800) return;
   if (a === "tab"){ tab = b.dataset.t; render(); window.scrollTo(0, 0); }
+  else if (a === "brand"){ if (lpFired){ lpFired = false; return; } openBrand(b.dataset.b); }
+  else if (a === "do-remove-brand"){ if (await mutate("/removebrand", {brand: b.dataset.b})){ draft = draft.filter(x => x.brand !== b.dataset.b); if (M.brand === b.dataset.b) M.brand = ""; closeSheet(); render(); toast("Brand removed"); } }
+  else if (a === "clear-quality-ask"){ const sel = $("#cb"); if (sel && sel.value) openClearAsk(sel.value); }
+  else if (a === "do-clear-quality"){ if (await mutate("/clearbrand", {brand: b.dataset.b})){ closeSheet(); render(); toast(b.dataset.b + " cleared"); } }
   else if (a === "cell") openCell(b.dataset.b, b.dataset.c);
   else if (a === "save-cell") saveCell(b.dataset.b, b.dataset.c);
   else if (a === "close") closeSheet();
@@ -577,6 +653,14 @@ document.addEventListener("input", e => {
   const l = R.lines.find(x => x.id === row.dataset.lid);
   if (l && e.target.dataset.f === "pcs"){ const n = parseInt(e.target.value.replace(/[^\d]/g, ""), 10); l.pcs = Number.isFinite(n) ? n : NaN; if (l.unclear) l.ok = false; refreshReview(); }
 });
+let lpTimer = null, lpFired = false, lpX = 0, lpY = 0, lpOpenedAt = 0;
+document.addEventListener("pointerdown", e => {
+  const t = e.target.closest && e.target.closest(".bname"); if (!t) return;
+  lpFired = false; clearTimeout(lpTimer); lpX = e.clientX; lpY = e.clientY;
+  lpTimer = setTimeout(() => { lpFired = true; lpOpenedAt = Date.now(); openRemoveBrand(t.dataset.b); }, 650);
+});
+["pointerup", "pointercancel", "pointermove", "scroll"].forEach(ev => document.addEventListener(ev, e => { if (ev === "pointermove" && Math.hypot(e.clientX - lpX, e.clientY - lpY) < 12) return; clearTimeout(lpTimer); }, true));
+document.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest(".bname")) e.preventDefault(); });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && !$("#sheet").hidden) closeSheet();
   if (e.key === "Enter" && e.target.id === "bq"){ const first = $("#sug [data-act=pick-brand]"); if (first){ e.preventDefault(); first.click(); } }

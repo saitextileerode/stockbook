@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="ta">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#27358F">
+<title>கடை ஸ்டாக் புக்</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Madurai:wght@400;500;600;700&family=Mukta+Malar:wght@600;800&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#F2F3F8; --surface:#FFFFFF; --fg:#161B33; --muted:#586080; --line:#D5D9E8;
+  --accent:#27358F; --accent-fg:#FFFFFF; --accent-soft:#E3E7F8;
+  --up:#19703F; --upbg:#D8F0E2; --down:#A8321A; --downbg:#FBDDD4; --note:#7A5200; --notebg:#FFF0C9;
+  --font-body:"Hind Madurai","Noto Sans Tamil",system-ui,sans-serif;
+  --font-display:"Mukta Malar","Hind Madurai","Noto Sans Tamil",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  color-scheme:dark;
+  --bg:#0F1224; --surface:#181C36; --fg:#E8EAF8; --muted:#9AA2C8; --line:#2B3158;
+  --accent:#9DAAF5; --accent-fg:#0F1224; --accent-soft:#232A55;
+  --up:#6FD39B; --upbg:#14352A; --down:#FF9C86; --downbg:#3C1F1A; --note:#F2C265; --notebg:#3A2E10}}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.5;margin:0;
+  padding-block:calc(12px + env(safe-area-inset-top,0px)) calc(100px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--font-display);margin:0;line-height:1.25}
+
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.top h1{font-size:1.45rem}
+.sync{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.sync.live i{background:var(--up)} .sync.err i{background:var(--down)}
+.shopbar{display:grid;grid-template-columns:1fr auto;gap:8px}
+.tot{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.tot div{padding:10px 14px}.tot div+div{border-left:1px solid var(--line)}
+.tot small{display:block;color:var(--muted);font-size:.78rem}
+.tot b{font-family:var(--font-display);font-size:1.35rem;font-variant-numeric:tabular-nums}
+
+.note{background:var(--notebg);color:var(--note);border-radius:12px;padding:10px 14px;font-size:.92rem}
+.btn{min-height:48px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);padding:0 16px;font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:default}
+.f{width:100%;min-height:46px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 12px}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:3px}
+
+.gridwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:350px;font-variant-numeric:tabular-nums}
+th,td{padding:0;text-align:center;border-bottom:1px solid var(--line)}
+tr:last-child>*{border-bottom:0}
+thead th{font-size:.74rem;color:var(--muted);font-weight:600;padding:8px 2px}
+.dot{display:block;width:12px;height:12px;border-radius:50%;margin:0 auto 2px;border:1.5px solid var(--muted)}
+.dot.White{background:#fff} .dot.Orange{background:#F28C28;border-color:#F28C28} .dot.Red{background:#D62F2F;border-color:#D62F2F}
+.dot.Yellow{background:#F4D23A;border-color:#F4D23A} .dot.Gold{background:#C99A2E;border-color:#C99A2E}
+tbody th{text-align:left;padding:8px 6px 8px 12px;font-weight:600;white-space:nowrap}
+tbody th small{display:block;font-weight:400;color:var(--muted);font-size:.72rem}
+td button{all:unset;display:block;width:100%;min-height:52px;line-height:52px;cursor:pointer;font-weight:600;font-size:.95rem}
+td button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+td button.zero{color:var(--muted);font-weight:400} td button.neg{color:var(--down)}
+.row-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.card h2{font-size:1.1rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{min-height:52px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);font-weight:700;line-height:1.2}
+.seg button[aria-pressed="true"].add{background:var(--upbg);border-color:var(--up);color:var(--up)}
+.seg button[aria-pressed="true"].less{background:var(--downbg);border-color:var(--down);color:var(--down)}
+.hint{margin:0;color:var(--muted);font-size:.88rem}
+textarea.f{min-height:96px;resize:vertical}
+
+.rev .meta{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ln{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;grid-template-columns:auto 1fr 1fr 96px;gap:8px;align-items:center}
+.ln.off{opacity:.5}
+.ln.warn{border-color:var(--note);background:var(--notebg)}
+.ln .msg{grid-column:1/-1;font-size:.84rem;color:var(--note);display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.ln .msg button{min-height:36px;padding:0 12px;border-radius:8px;border:1.5px solid var(--note);background:transparent;color:var(--note);font-weight:600}
+.ln input[type=checkbox]{width:22px;height:22px}
+.ln .f{min-height:42px;padding:6px 8px}
+.sum{font-weight:700;font-variant-numeric:tabular-nums}
+.sum.add{color:var(--up)} .sum.less{color:var(--down)}
+.err{color:var(--down);font-weight:600;margin:0}
+
+.logrow{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.logrow.undone{opacity:.5}
+.logrow header{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{border-radius:999px;padding:0 10px;font-size:.78rem;font-weight:700}
+.pill.in{background:var(--upbg);color:var(--up)} .pill.out{background:var(--downbg);color:var(--down)} .pill.set{background:var(--accent-soft);color:var(--accent)}
+.logrow ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:2px 14px;font-size:.9rem;font-variant-numeric:tabular-nums}
+.logrow li{display:flex;justify-content:space-between;gap:8px}
+.logrow small{color:var(--muted)}
+.logrow .btn{min-height:38px;font-size:.85rem;padding:0 12px}
+.empty{text-align:center;color:var(--muted);padding:28px 12px;background:var(--surface);border:1px dashed var(--line);border-radius:12px}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:5;
+  padding:6px max(16px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px))}
+.tabs div{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tabs button{min-height:48px;border:0;border-radius:10px;background:transparent;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent)}
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:11;background:var(--surface);border-radius:18px 18px 0 0;max-height:92%;overflow-y:auto;
+  padding:18px max(16px,env(safe-area-inset-left,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px));box-shadow:0 -6px 24px rgba(0,0,0,.25)}
+#sheet .in{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.btns{display:flex;gap:10px}.btns .btn{flex:1}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:20;max-width:90%;font-weight:600}
+[hidden]{display:none!important}
+@media (max-width:420px){.ln{grid-template-columns:auto 1fr 1fr}.ln .q{grid-column:2/-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><h1>கடை ஸ்டாக் புக்</h1><div style="display:flex;align-items:center;gap:10px"><div id="sync" class="sync"><i></i><span>ஏற்றுகிறது…</span></div><button class="btn" data-act="settings" style="min-height:40px;padding:0 12px">அமைப்பு</button></div></header>
+  <div class="shopbar"><select id="shopsel" class="f" aria-label="கடை"></select><button class="btn" data-act="new-shop">+ கடை</button></div>
+  <section class="tot" id="tot"></section>
+  <main id="main"></main>
+</div>
+<nav class="tabs" aria-label="பிரிவுகள்"><div>
+  <button data-act="tab" data-t="stock" aria-selected="true">இருப்பு</button>
+  <button data-act="tab" data-t="add" aria-selected="false">பதிவு</button>
+  <button data-act="tab" data-t="log" aria-selected="false">பதிவேடு</button>
+</div></nav>
+<div id="scrim" hidden data-act="close"></div>
+<div id="sheet" role="dialog" aria-modal="true" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const f = n => Math.round(n).toLocaleString("en-IN");
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const COLOURS = ["White","Orange","Red","Yellow","Gold"];
+const BRAND_CODE = {J:"Jupiter",T:"Tata",S:"Silver",P:"Popular",B:"Blue Star",W:"World Cup",V:"VIP",GK:"Gold King"};
+const COL_CODE = {W:"White",O:"Orange",R:"Red",Y:"Yellow",G:"Gold",M:"Gold"};
+const bales = n => { const s = n < 0 ? "−" : "", a = Math.abs(Math.round(n)), b = Math.floor(a / 600), r = a - b * 600; return s + b + " பேல்" + (r ? " + " + f(r) : ""); };
+const key = (b, c) => b + "|" + c;
+const LS = {get(k){ try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch (e) {} }};
+
+const DEFAULT_BRANDS = ["Jupiter","Tata","Silver","Popular","Blue Star","World Cup","VIP","Gold King"];
+const KEY = "sb-local-v1", LOG_LIMIT = 1000;
+let DB = null, storageOk = true, pendingImport = null;
+let S = null, tab = "stock", R = null, scanning = false, scanErr = "", addKind = "in", ctl = null, locked = false, busy = false, shopId = "";
+
+/* ---------- local storage on this phone ---------- */
+function newShop(name){ const id = uid(); DB.shops[id] = {id, name, brands: DEFAULT_BRANDS.slice(), stock: {}, log: [], rev: 1}; DB.order.push(id); return DB.shops[id]; }
+function loadDB(){
+  try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) { storageOk = false; }
+  if (!DB || !Array.isArray(DB.order) || !DB.order.length){ DB = {shops: {}, order: [], lastBackup: 0}; newShop("என் கடை"); persist(); }
+}
+function persist(){ try { localStorage.setItem(KEY, JSON.stringify(DB)); storageOk = true; } catch (e) { storageOk = false; } setSync(storageOk ? "live" : "err"); }
+function setSync(k){ const el = $("#sync"), t = {live:"இந்த போனில் சேமிக்கப்படுது", err:"சேமிக்க முடியல"};
+  el.className = "sync " + (k === "live" ? "live" : k === "err" ? "err" : ""); el.querySelector("span").textContent = t[k] || ""; }
+function toast(t){ const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 2600); }
+
+/* ---------- changes to the stock (same rules as the server version) ---------- */
+function applyEntry(shop, body){
+  const sign = body.kind === "in" ? 1 : -1, lines = [];
+  if (!Array.isArray(body.lines) || !body.lines.length) throw new Error("வரிகள் இல்ல");
+  for (const l of body.lines){
+    const brand = String(l.brand || "").trim().slice(0, 40), pcs = Number(l.pcs);
+    if (!brand || !COLOURS.includes(l.colour) || !Number.isInteger(pcs) || pcs <= 0) throw new Error("தப்பான வரி");
+    if (!shop.brands.includes(brand)) shop.brands.push(brand);
+    const k = key(brand, l.colour); shop.stock[k] = (shop.stock[k] || 0) + sign * pcs; lines.push({k, d: sign * pcs});
+  }
+  shop.log.unshift({id: uid(), ts: Date.now(), kind: body.kind, docNo: String(body.docNo || "").slice(0, 30), party: String(body.party || "").slice(0, 60), lines});
+  if (shop.log.length > LOG_LIMIT) shop.log.length = LOG_LIMIT;
+  shop.rev++;
+}
+function applySet(shop, body){
+  const to = Number(body.to), k = key(body.brand, body.colour), from = shop.stock[k] || 0;
+  if (!shop.brands.includes(body.brand) || !COLOURS.includes(body.colour) || !Number.isInteger(to)) throw new Error("தப்பான எண்");
+  if (from === to) return;
+  shop.stock[k] = to; shop.log.unshift({id: uid(), ts: Date.now(), kind: "set", docNo: "", party: "", lines: [{k, from, to}]});
+  if (shop.log.length > LOG_LIMIT) shop.log.length = LOG_LIMIT;
+  shop.rev++;
+}
+function applyUndo(shop, body){
+  const e = shop.log.find(x => x.id === body.id); if (!e || e.undone) return;
+  e.lines.forEach(l => { shop.stock[l.k] = (shop.stock[l.k] || 0) + (e.kind === "set" ? l.from - l.to : -l.d); });
+  e.undone = true; shop.rev++;
+}
+function applyBrand(shop, body){
+  const name = String(body.name || "").trim().slice(0, 30);
+  if (!name) throw new Error("பெயர் இல்ல");
+  if (shop.brands.some(b => b.toLowerCase() === name.toLowerCase())) throw new Error("இந்த பிராண்டு இருக்கு");
+  shop.brands.push(name); shop.rev++;
+}
+async function mutate(path, body){
+  try {
+    const shop = DB.shops[shopId];
+    if (path === "/entries") applyEntry(shop, body);
+    else if (path === "/set") applySet(shop, body);
+    else if (path === "/undo") applyUndo(shop, body);
+    else if (path === "/brands") applyBrand(shop, body);
+    persist(); S = shop; return storageOk;
+  } catch (e) { toast("சேமிக்க முடியல: " + e.message); return false; }
+}
+
+/* ---------- start ---------- */
+function fillShopSel(){ $("#shopsel").innerHTML = DB.order.map(id => `<option value="${esc(id)}"${id === shopId ? " selected" : ""}>${esc(DB.shops[id].name)}</option>`).join(""); }
+async function loadShop(){ S = DB.shops[shopId]; LS.set("sb-shop", shopId); fillShopSel(); render(); }
+async function boot(){
+  loadDB();
+  const last = LS.get("sb-shop"); shopId = last && DB.shops[last] ? last : DB.order[0];
+  setSync(storageOk ? "live" : "err");
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+  await loadShop();
+}
+
+/* ---------- photo scan: this phone calls the Claude API directly with your own key ---------- */
+const apiKey = () => LS.get("sb-key") || "";
+function scanPrompt(kind, brands){
+  return `You are reading a photo of handwritten Indian textile trade paperwork for a gamchha (cotton towel) wholesaler. The photo is a ${kind === "out" ? "customer ORDER FORM (indent form)" : "STOCK BOOK page"}.
+Known brands: ${brands.join(", ")}. Colours: White, Orange, Red, Yellow, Gold. Shorthand: O=Orange, R=Red, Y=Yellow, G or M=Gold, W=White, WC=World Cup. "Mango" means Gold and "Lemon" means Yellow (Gold and Mango are the same colour; Lemon and Yellow are the same colour).
+Rules:
+- 1 bale = 600 pieces. "One Bale" = 600 pcs, "Two Bale" = 1200 pcs.
+- A heading like "Gamchha Jupiter Colour: Red 200, Orange 200" means separate lines Jupiter Red 200, Jupiter Orange 200. "Gamchha Tata White 300pc" means Tata White 300. "Popular Colour Orange 100" means Popular Orange 100.
+- Rates or prices (e.g. 53/-, 66=00) are NOT quantities. Ignore them. Ignore transport, address and phone numbers.
+- Stock book pages: the quantity is the number written just before the brand name (the Pcs/Mts column). Particulars read "Brand - Colour - Party". If only the brand name is written with no colour, the colour is White; if a colour is written, use it. If the colours are split inline (e.g. "Y-507 R-116") make one line per colour.
+- Skip lines that are crossed out and mention them in notes.
+- NEVER guess. If a quantity, brand or colour is blurry, overwritten or ambiguous, still return the line with "unclear": true, a short English "note" saying what is unclear, and "pcs": null if the number cannot be read.
+Reply with ONLY this JSON:
+{"doc_no": string or null, "date": "DD-MM-YYYY" or null, "party": string or null, "lines": [{"brand": string, "colour": string, "pcs": number or null, "unclear": boolean, "note": string}], "notes": string}`;
+}
+function extractJson(text){
+  const t = String(text || ""), fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+  return JSON.parse(fence ? fence[1] : t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1));
+}
+async function callClaude(kind, image, signal){
+  const key = apiKey(), fail = c => { const e = new Error(c); e.code = c; return e; };
+  if (!key) throw fail("no_key");
+  let res;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {method: "POST", signal,
+      headers: {"content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true"},
+      body: JSON.stringify({model: LS.get("sb-model") || "claude-sonnet-5-5", max_tokens: 4000, messages: [{role: "user", content: [
+        {type: "image", source: {type: "base64", media_type: "image/jpeg", data: image}}, {type: "text", text: scanPrompt(kind, S.brands)}]}]})});
+  } catch (e) { if (e.name === "AbortError") throw e; throw fail("network"); }
+  if (!res.ok) throw fail(res.status === 401 || res.status === 403 ? "bad_key" : res.status === 429 ? "rate_limited" : "upstream");
+  const data = await res.json(), text = (data.content || []).filter(c => c.type === "text").map(c => c.text).join("\n");
+  try { return extractJson(text); } catch (e) { throw fail("invalid_json"); }
+}
+
+/* ---------- backup and restore ---------- */
+function backupNote(){
+  if (!storageOk) return `<div class="note" style="margin-bottom:12px">இந்த browser-ல தரவை சேமிக்க முடியல. தனிப்பட்ட (private) window-ஆ இருக்கலாம். சாதாரண window-ல திறங்க.</div>`;
+  if (!DB.order.some(id => DB.shops[id].log.length)) return "";
+  const d = DB.lastBackup ? Math.floor((Date.now() - DB.lastBackup) / 86400000) : null;
+  if (d !== null && d < 7) return "";
+  return `<div class="note" style="margin-bottom:12px">${d === null ? "இன்னும் பேக்கப் எடுக்கல." : "பேக்கப் எடுத்து " + d + " நாள் ஆச்சு."} <button class="btn" style="min-height:36px;margin-left:6px" data-act="dl" data-f="backup.json">இப்போ எடு</button></div>`;
+}
+function saveBlob(blob, name){
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function importFile(file){
+  if (!file) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      const d = JSON.parse(String(fr.result));
+      const ok = d && typeof d.shops === "object" && Array.isArray(d.order) && d.order.length && d.order.every(id => d.shops[id] && Array.isArray(d.shops[id].brands) && d.shops[id].stock && Array.isArray(d.shops[id].log));
+      if (!ok) throw new Error("bad");
+      pendingImport = d;
+      openSheet(`<h3>பேக்கப்பை மீட்டெடுக்கவா?</h3><p class="hint">இந்த கோப்பில ${d.order.length} கடை இருக்கு. இப்போ இந்த போனில் இருக்கற தரவு எல்லாம் அழிஞ்சு, இந்த கோப்பு தரவு வரும்.</p>
+        <div class="btns"><button class="btn" data-act="close">ரத்து</button><button class="btn primary" data-act="do-import">மீட்டெடு</button></div>`);
+    } catch (e) { toast("இது சரியான பேக்கப் கோப்பு இல்ல."); }
+  };
+  fr.readAsText(file);
+}
+function openSettings(){
+  const d = DB.lastBackup ? Math.floor((Date.now() - DB.lastBackup) / 86400000) : null;
+  openSheet(`<h3>அமைப்பு</h3><p class="hint">ஆப் பதிப்பு: v1 (2026-11-14)</p>
+    <div class="card"><h2>பேக்கப்</h2>
+      <p class="hint">தரவு இந்த போனின் browser-ல சேமிக்கப்படுது. Browser தரவை அழிச்சா அல்லது போனை மாத்தினா போயிடும். அடிக்கடி பேக்கப் எடுத்து Drive-ல போட்டு வைங்க.</p>
+      <p class="hint">${d === null ? "இன்னும் பேக்கப் எடுக்கல." : "கடைசி பேக்கப்: " + (d === 0 ? "இன்னைக்கு" : d + " நாள் முன்பு") + "."}</p>
+      <div class="row-actions"><button class="btn" data-act="dl" data-f="backup.json">பேக்கப் எடு</button><button class="btn" data-act="import-pick">மீட்டெடு</button><button class="btn" data-act="dl" data-f="export.csv">இருப்பு CSV</button></div>
+      <input id="imp" type="file" accept=".json,application/json" style="display:none"></div>
+    <div class="card"><h2>படம் ஸ்கேன்</h2>
+      <p class="hint">உங்க Claude API key-ஐ போடுங்க. இது இந்த போனில் மட்டும் சேமிக்கப்படும். ஸ்கேன் பண்ணும்போது படம் நேரா Anthropic-க்கு போகும், ஒவ்வொரு ஸ்கேனுக்கும் கட்டணம் உண்டு. இந்த போனை வேற யாருக்கும் கொடுக்காதீங்க.</p>
+      <div><label for="k">API key</label><input id="k" class="f" type="password" autocomplete="off" value="${esc(apiKey())}" placeholder="sk-ant-..."></div>
+      <div class="btns"><button class="btn" data-act="clear-key">நீக்கு</button><button class="btn primary" data-act="save-key">சேமி</button></div></div>
+    <button class="btn" data-act="close">மூடு</button>`);
+}
+async function download(file){
+  const day = new Date().toISOString().slice(0, 10);
+  if (file === "backup.json"){
+    saveBlob(new Blob([JSON.stringify(DB)], {type: "application/json"}), "stock-backup-" + day + ".json");
+    DB.lastBackup = Date.now(); persist(); toast("பேக்கப் கோப்பு சேமிக்கப்பட்டது. அதை Drive-ல போட்டு வைங்க."); render();
+  } else {
+    const q = (b, c) => S.stock[key(b, c)] || 0, rows = [["Brand"].concat(COLOURS).concat(["Total pcs", "Bales (600)"])];
+    S.brands.forEach(b => { const v = COLOURS.map(c => q(b, c)), t = v.reduce((a, x) => a + x, 0); rows.push([b].concat(v).concat([t, (t / 600).toFixed(2)])); });
+    const cell = x => /[",\n]/.test(String(x)) ? '"' + String(x).replace(/"/g, '""') + '"' : String(x);
+    saveBlob(new Blob(["﻿" + rows.map(r => r.map(cell).join(",")).join("\r\n")], {type: "text/csv"}), "stock-" + day + ".csv");
+  }
+}
+
+/* ---------- render ---------- */
+const qty = (b, c) => S.stock[key(b, c)] || 0;
+const brandTotal = b => COLOURS.reduce((a, c) => a + qty(b, c), 0);
+function render(){
+  if (!S) return;
+  const all = S.brands.reduce((a, b) => a + brandTotal(b), 0);
+  $("#tot").innerHTML = `<div><small>மொத்த பீஸ்</small><b>${f(all)}</b></div><div><small>மொத்த பேல்</small><b>${bales(all)}</b></div>`;
+  document.querySelectorAll(".tabs [data-t]").forEach(b => b.setAttribute("aria-selected", b.dataset.t === tab));
+  if (tab === "stock") renderStock(); else if (tab === "add") renderAdd(); else renderLog();
+}
+function renderStock(){
+  const zero = S.brands.every(b => brandTotal(b) === 0);
+  const head = "<thead><tr><th></th>" + COLOURS.map(c => `<th scope="col"><i class="dot ${c}"></i>${c}</th>`).join("") + "</tr></thead>";
+  const body = S.brands.map(b => `<tr><th scope="row">${esc(b)}<small>${f(brandTotal(b))} பீஸ் · ${bales(brandTotal(b))}</small></th>` +
+    COLOURS.map(c => { const v = qty(b, c); return `<td><button data-act="cell" data-b="${esc(b)}" data-c="${c}" class="${v === 0 ? "zero" : v < 0 ? "neg" : ""}" aria-label="${esc(b)} ${c} ${f(v)}">${f(v)}</button></td>`; }).join("") + "</tr>").join("");
+  $("#main").innerHTML = backupNote() + (zero ? `<div class="note" style="margin-bottom:12px">தொடக்க இருப்பு இன்னும் போடலை. ஒவ்வொரு கட்டத்தையும் தொட்டு இப்போ இருக்கற எண்ணிக்கையை போடுங்க. 1 பேல் = 600 பீஸ்.</div>` : "") +
+    `<div class="gridwrap"><table>${head}<tbody>${body}</tbody></table></div>
+     <div class="row-actions" style="margin-top:12px"><button class="btn" data-act="add-brand">+ புது பிராண்டு</button>
+     <button class="btn" data-act="dl" data-f="export.csv">இருப்பு CSV</button><button class="btn" data-act="dl" data-f="backup.json">முழு பேக்கப்</button></div>`;
+}
+function renderAdd(){
+  if (R) return renderReview();
+  $("#main").innerHTML = `<div class="card">
+    <h2>என்ன பதிவு செய்யணும்?</h2>
+    <div class="seg"><button class="add" data-act="kind" data-k="in" aria-pressed="${addKind === "in"}">ஸ்டாக் புக்<br><small>இருப்பு கூடும்</small></button>
+    <button class="less" data-act="kind" data-k="out" aria-pressed="${addKind === "out"}">ஆர்டர் படிவம்<br><small>இருப்பு குறையும்</small></button></div>
+    <div><input id="file" type="file" accept="image/*" style="display:none">
+      ${apiKey() ? `<button class="btn primary" style="width:100%" data-act="pick" ${scanning ? "disabled" : ""}>${scanning ? "ஸ்கேன் ஆகுது…" : "படம் எடுத்து / தேர்ந்தெடுத்து ஸ்கேன் பண்ணு"}</button>` : `<button class="btn primary" style="width:100%" data-act="settings">ஸ்கேன் இயக்க API key போடுங்க</button>`}
+      ${scanning ? `<button class="btn" style="width:100%;margin-top:8px" data-act="stop-scan">நிறுத்து</button>` : ""}
+      <p class="hint" style="margin-top:6px">ஸ்கேன் முடிஞ்சதும் எண்களை நீங்க பார்த்து உறுதி செய்த பிறகுதான் இருப்பு மாறும்.</p></div>
+    ${scanErr ? `<p class="err" role="alert">${esc(scanErr)}</p>` : ""}
+  </div>
+  <div class="card" style="margin-top:12px">
+    <h2>சுருக்கமா டைப் பண்ணு</h2>
+    <p class="hint">ஒரு வரிக்கு ஒண்ணு. எ.கா. <b>JR 3719</b> = Jupiter Red 3,719 பீஸ். பேல்னா <b>TW 2b</b> = Tata White 2 பேல். J Jupiter, T Tata, S Silver, P Popular, B Blue Star, W World Cup, V VIP, GK Gold King. O Orange, R Red, Y Yellow, G/M Gold, W White.</p>
+    <textarea id="quick" class="f" placeholder="JR 3719&#10;SR 623"></textarea>
+    <p id="quick-err" class="err" role="alert"></p>
+    <button class="btn" data-act="quick">சரிபார்</button>
+  </div>`;
+}
+function parseQuick(txt){
+  const lines = [], bad = [];
+  txt.split(/\n+/).map(s => s.trim()).filter(Boolean).forEach(l => {
+    const m = l.match(/^(WC|GK|[A-Za-z])\s*([A-Za-z])\s*[-:=]?\s*(\d+(?:\.\d+)?)\s*(b|bale|bales|பேல்)?$/i);
+    if (!m){ bad.push(l); return; }
+    const bc = m[1].toUpperCase(), brand = bc === "WC" ? "World Cup" : BRAND_CODE[bc], col = COL_CODE[m[2].toUpperCase()];
+    if (!brand || !col){ bad.push(l); return; }
+    const n = parseFloat(m[3]), pcs = m[4] ? Math.round(n * 600) : Math.round(n);
+    if (!S.brands.includes(brand)) S.brands.push(brand);
+    lines.push({id: uid(), brand, colour: col, pcs, include: true, unclear: false, ok: true, note: ""});
+  });
+  return {lines, bad};
+}
+
+/* ---------- review ---------- */
+function startReview(kind, lines, meta){
+  R = {kind, lines, docNo: meta.docNo || "", party: meta.party || "", date: meta.date || "", notes: meta.notes || ""};
+  if (kind === "in"){
+    const prev = new Set(); S.log.filter(e => !e.undone && e.kind === "in").forEach(e => e.lines.forEach(l => prev.add(l.k + "|" + l.d)));
+    R.lines.forEach(l => { if (prev.has(key(l.brand, l.colour) + "|" + l.pcs)){ l.include = false; l.note = (l.note ? l.note + " · " : "") + "இதே எண் முன்பே பதிவாகியிருக்கு. இது புதுசுன்னா டிக் போடுங்க."; } });
+  }
+  tab = "add"; render();
+}
+const isDup = () => R.docNo && S.log.some(e => !e.undone && e.docNo && e.docNo === R.docNo.trim() && e.kind === R.kind);
+const lineValid = l => S.brands.includes(l.brand) && COLOURS.includes(l.colour) && Number.isInteger(l.pcs) && l.pcs > 0;
+const lineReady = l => lineValid(l) && (!l.unclear || l.ok);
+function reviewState(){
+  const inc = R.lines.filter(l => l.include);
+  const total = inc.reduce((a, l) => a + (Number.isFinite(l.pcs) ? l.pcs : 0), 0);
+  return {inc, total, ready: inc.length > 0 && inc.every(lineReady)};
+}
+function renderReview(){
+  const cls = R.kind === "in" ? "add" : "less";
+  $("#main").innerHTML = `<div class="card rev">
+    <h2>${R.kind === "in" ? "ஸ்டாக் புக்: இருப்பு கூடும்" : "ஆர்டர் படிவம்: இருப்பு குறையும்"}</h2>
+    <p class="hint">படிச்ச எண்களை சரிபாருங்க. தப்பா இருந்தா மாத்துங்க. மஞ்சள் வரிகளை நீங்க உறுதி செய்யாம பதிவாகாது.</p>
+    <div class="meta"><div><label for="r-no">படிவ எண்</label><input id="r-no" class="f" value="${esc(R.docNo)}"></div>
+    <div><label for="r-party">கடை / பெயர்</label><input id="r-party" class="f" value="${esc(R.party)}"></div></div>
+    ${R.notes ? `<p class="hint">படித்த குறிப்பு: ${esc(R.notes)}</p>` : ""}
+    <div id="r-dup"></div>
+    <div id="r-lines" style="display:flex;flex-direction:column;gap:8px">${R.lines.map(lineHtml).join("") || '<div class="empty">வரிகள் எதுவும் கிடைக்கல.</div>'}</div>
+    <button class="btn" data-act="add-line">+ வரி சேர்</button>
+    <div class="sum ${cls}" id="r-sum"></div>
+    <div class="btns"><button class="btn" data-act="cancel-review">ரத்து</button><button class="btn primary" id="r-ok" data-act="confirm-review">அப்டேட் பண்ணு</button></div>
+  </div>`;
+  refreshReview();
+}
+function lineHtml(l){
+  const warn = (l.unclear && !l.ok) || (l.note && !l.unclear);
+  return `<div class="ln ${l.include ? "" : "off"} ${warn ? "warn" : ""}" data-lid="${l.id}">
+    <input type="checkbox" data-f="include" ${l.include ? "checked" : ""} aria-label="சேர்">
+    <select class="f" data-f="brand" aria-label="பிராண்டு"><option value="">பிராண்டு?</option>${S.brands.map(b => `<option${b === l.brand ? " selected" : ""}>${esc(b)}</option>`).join("")}</select>
+    <select class="f" data-f="colour" aria-label="நிறம்"><option value="">நிறம்?</option>${COLOURS.map(c => `<option${c === l.colour ? " selected" : ""}>${c}</option>`).join("")}</select>
+    <input class="f q" data-f="pcs" inputmode="numeric" value="${Number.isFinite(l.pcs) ? l.pcs : ""}" placeholder="பீஸ்" aria-label="பீஸ்">
+    ${l.note || (l.unclear && !l.ok) ? `<div class="msg"><span>${esc(l.note || "தெளிவில்லை")}</span>${l.unclear && !l.ok ? `<button data-act="confirm-line" data-lid="${l.id}">சரி, பார்த்தேன்</button>` : ""}</div>` : ""}
+  </div>`;
+}
+function refreshReview(){
+  const {inc, total, ready} = reviewState(), sign = R.kind === "in" ? "+" : "−";
+  $("#r-sum").textContent = inc.length ? `${inc.length} வரிகள்: ${sign}${f(total)} பீஸ் (${bales(total)})` : "எந்த வரியும் தேர்வாகல";
+  $("#r-ok").disabled = !ready || busy;
+  $("#r-dup").innerHTML = isDup() ? `<div class="note">இந்த படிவ எண் (${esc(R.docNo)}) ஏற்கனவே பதிவாகியிருக்கு. திரும்ப பதிவு செய்தா இருப்பு இரண்டு தடவை மாறும்.</div>` : "";
+}
+async function confirmReview(){
+  const {inc, ready} = reviewState(); if (!ready || busy) return;
+  busy = true; refreshReview();
+  const ok = await mutate("/entries", {kind: R.kind, docNo: R.docNo.trim(), party: R.party.trim(), lines: inc.map(l => ({brand: l.brand, colour: l.colour, pcs: l.pcs}))});
+  busy = false;
+  if (!ok){ refreshReview(); return; }
+  R = null; tab = "stock"; render(); toast("அப்டேட் ஆச்சு");
+}
+
+/* ---------- scan ---------- */
+async function toJpegBase64(file){
+  const bmp = await createImageBitmap(file);
+  const sc = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.85));
+  return await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(",")[1]); fr.onerror = rej; fr.readAsDataURL(blob); });
+}
+const ERR = {no_key:"ஸ்கேன் இயக்க API key போடணும் (மேல் உள்ள அமைப்பு).", bad_key:"API key தப்பு அல்லது செல்லாது. அமைப்புல சரி பண்ணுங்க.", rate_limited:"இப்போ நிறைய ஸ்கேன் ஆகிடுச்சு. கொஞ்ச நேரம் கழிச்சு முயற்சி பண்ணுங்க.",
+  invalid_json:"படத்துல இருந்து வரிகளை எடுக்க முடியல. வெளிச்சமா, நேரா படம் எடுத்து மறுபடி முயற்சி பண்ணுங்க.", network:"இணையம் இல்ல அல்லது இணைக்க முடியல.", upstream:"ஸ்கேன் சேவையுடன் இணைக்க முடியல. மறுபடி முயற்சி பண்ணுங்க."};
+async function doScan(file){
+  if (!file) return;
+  scanErr = ""; scanning = true; render();
+  ctl = new AbortController();
+  try {
+    const kind = addKind;
+    const image = await toJpegBase64(file);
+    const out = await callClaude(kind, image, ctl.signal);
+    const lines = (Array.isArray(out?.lines) ? out.lines : []).map(l => {
+      const brand = S.brands.find(b => b.toLowerCase() === String(l.brand || "").trim().toLowerCase()) || "";
+      const colour = COLOURS.find(c => c.toLowerCase() === String(l.colour || "").trim().toLowerCase()) || "";
+      const pcs = l.pcs !== null && Number.isFinite(+l.pcs) ? Math.round(+l.pcs) : NaN;
+      const unclear = !!l.unclear || !brand || !colour || !Number.isFinite(pcs);
+      const note = [l.note, !brand ? "பிராண்டு தெரியல" : "", !colour ? "நிறம் தெரியல" : ""].filter(Boolean).join(" · ");
+      return {id: uid(), brand, colour, pcs, include: true, unclear, ok: false, note};
+    });
+    scanning = false;
+    if (!lines.length){ scanErr = "இந்த படத்துல வரிகள் எதுவும் கிடைக்கல. கையால் பதிவு செய்யலாம்."; render(); return; }
+    startReview(kind, lines, {docNo: out.doc_no || "", party: out.party || "", date: out.date || "", notes: out.notes || ""});
+  } catch (e) {
+    scanning = false;
+    if (e.name === "AbortError") { /* stopped by user */ }
+    else if (e.code === "no_key"){ scanErr = ERR.no_key; }
+    else scanErr = ERR[e.code] || "ஸ்கேன் முடியல. மறுபடி முயற்சி பண்ணுங்க.";
+    render();
+  }
+}
+
+/* ---------- sheets ---------- */
+function openSheet(html, focus){ $("#sheet").innerHTML = `<div class="in">${html}</div>`; $("#sheet").hidden = false; $("#scrim").hidden = false; const x = focus && $(focus); if (x) x.focus(); }
+function closeSheet(){ if (locked) return; $("#sheet").hidden = true; $("#scrim").hidden = true; $("#sheet").innerHTML = ""; }
+function openCell(b, c){
+  const v = qty(b, c);
+  openSheet(`<h3>${esc(b)} · ${c}</h3>
+    <p class="hint">இப்போதைய இருப்பு: <b>${f(v)} பீஸ்</b> (${bales(v)})</p>
+    <div class="two"><div><label for="s-n">எண்ணி பார்த்த இருப்பு</label><input id="s-n" class="f" inputmode="decimal" value="${v}"></div>
+    <div><label for="s-u">அலகு</label><select id="s-u" class="f"><option value="p">பீஸ்</option><option value="b">பேல்</option></select></div></div>
+    <p id="s-prev" class="hint"></p><p id="s-err" class="err" role="alert"></p>
+    <div class="btns"><button class="btn" data-act="close">ரத்து</button><button class="btn primary" data-act="save-cell" data-b="${esc(b)}" data-c="${c}">சேமி</button></div>`, "#s-n");
+  const upd = () => { const n = parseFloat($("#s-n").value.replace(",", ".")); $("#s-prev").textContent = isFinite(n) ? "புது இருப்பு: " + f($("#s-u").value === "b" ? n * 600 : n) + " பீஸ்" : ""; };
+  $("#s-n").addEventListener("input", upd); $("#s-u").addEventListener("change", upd); upd();
+}
+async function saveCell(b, c){
+  const n = parseFloat($("#s-n").value.replace(",", ".")); if (!isFinite(n)){ $("#s-err").textContent = "எண்ணை சரியா போடுங்க."; return; }
+  const to = Math.round($("#s-u").value === "b" ? n * 600 : n);
+  if (to === qty(b, c)){ closeSheet(); return; }
+  if (await mutate("/set", {brand: b, colour: c, to})){ closeSheet(); render(); toast("இருப்பு சேமிக்கப்பட்டது"); }
+}
+
+/* ---------- log ---------- */
+function renderLog(){
+  const rows = S.log.map(e => {
+    const d = new Date(e.ts).toLocaleString("en-IN", {day: "numeric", month: "short", hour: "numeric", minute: "2-digit"});
+    const lab = e.kind === "in" ? "ஸ்டாக் புக்" : e.kind === "out" ? "ஆர்டர்" : "இருப்பு திருத்தம்";
+    const li = e.lines.map(l => { const [b, c] = l.k.split("|"); const v = e.kind === "set" ? `${f(l.from)} → ${f(l.to)}` : (l.d > 0 ? "+" : "−") + f(Math.abs(l.d));
+      return `<li><span>${esc(b)} ${esc(c)}</span><b>${v}</b></li>`; }).join("");
+    return `<article class="logrow ${e.undone ? "undone" : ""}"><header><span><span class="pill ${e.kind}">${lab}</span> ${e.docNo ? "#" + esc(e.docNo) : ""} ${e.party ? "· " + esc(e.party) : ""}</span><small>${esc(e.user || "")} · ${d}</small></header><ul>${li}</ul>
+      ${e.undone ? `<small>ரத்து செய்யப்பட்டது${e.undoneBy ? " (" + esc(e.undoneBy) + ")" : ""}</small>` : `<div><button class="btn" data-act="undo" data-id="${esc(e.id)}">இந்த பதிவை ரத்து செய்</button></div>`}</article>`;
+  }).join("");
+  $("#main").innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">${rows || '<div class="empty">இன்னும் பதிவுகள் இல்லை. “பதிவு” பகுதியில் ஸ்டாக் புக் அல்லது ஆர்டர் சேருங்க.</div>'}</div>`;
+}
+
+
+/* ---------- events ---------- */
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const a = b.dataset.act;
+  if (a === "tab"){ tab = b.dataset.t; render(); window.scrollTo(0, 0); }
+  else if (a === "cell") openCell(b.dataset.b, b.dataset.c);
+  else if (a === "save-cell") saveCell(b.dataset.b, b.dataset.c);
+  else if (a === "close") closeSheet();
+  else if (a === "kind"){ addKind = b.dataset.k; render(); }
+  else if (a === "pick") $("#file").click();
+  else if (a === "stop-scan") ctl?.abort();
+  else if (a === "quick"){
+    const {lines, bad} = parseQuick($("#quick").value);
+    if (!lines.length && !bad.length){ $("#quick-err").textContent = "எதாவது எழுதுங்க."; return; }
+    if (bad.length){ $("#quick-err").textContent = "இந்த வரிகள் புரியல: " + bad.join(", "); return; }
+    startReview(addKind, lines, {});
+  }
+  else if (a === "add-line"){ R.lines.push({id: uid(), brand: "", colour: "", pcs: NaN, include: true, unclear: false, ok: true, note: ""}); renderReview(); }
+  else if (a === "confirm-line"){ const l = R.lines.find(x => x.id === b.dataset.lid); if (l && lineValid(l)){ l.ok = true; renderReview(); } else toast("முதல்ல பிராண்டு, நிறம், பீஸ் மூணும் போடுங்க"); }
+  else if (a === "cancel-review"){ R = null; render(); }
+  else if (a === "confirm-review") confirmReview();
+  else if (a === "undo"){ if (await mutate("/undo", {id: b.dataset.id})){ render(); toast("ரத்து செய்யப்பட்டது"); } }
+  else if (a === "dl") download(b.dataset.f);
+  else if (a === "settings") openSettings();
+  else if (a === "save-key"){ LS.set("sb-key", $("#k").value.trim()); closeSheet(); render(); toast("சேமிக்கப்பட்டது"); }
+  else if (a === "clear-key"){ LS.set("sb-key", ""); closeSheet(); render(); toast("API key நீக்கப்பட்டது"); }
+  else if (a === "import-pick") $("#imp").click();
+  else if (a === "do-import"){ if (pendingImport){ DB = pendingImport; pendingImport = null; persist(); shopId = DB.order[0]; R = null; closeSheet(); loadShop(); toast("மீட்டெடுக்கப்பட்டது"); } }
+  else if (a === "add-brand"){
+    openSheet(`<h3>புது பிராண்டு</h3><div><label for="nb">பிராண்டு பெயர்</label><input id="nb" class="f" maxlength="30"></div><p id="nb-err" class="err" role="alert"></p>
+      <div class="btns"><button class="btn" data-act="close">ரத்து</button><button class="btn primary" data-act="save-brand">சேர்</button></div>`, "#nb");
+  }
+  else if (a === "save-brand"){
+    const n = $("#nb").value.trim(); if (!n){ $("#nb-err").textContent = "பெயர் எழுதுங்க."; return; }
+    if (S.brands.some(x => x.toLowerCase() === n.toLowerCase())){ $("#nb-err").textContent = "இந்த பிராண்டு ஏற்கனவே இருக்கு."; return; }
+    if (await mutate("/brands", {name: n})){ closeSheet(); render(); }
+  }
+  else if (a === "new-shop"){
+    openSheet(`<h3>புது கடை</h3><div><label for="ns">கடை பெயர்</label><input id="ns" class="f" maxlength="40"></div><p id="ns-err" class="err" role="alert"></p>
+      <div class="btns"><button class="btn" data-act="close">ரத்து</button><button class="btn primary" data-act="save-shop">சேர்</button></div>`, "#ns");
+  }
+  else if (a === "save-shop"){
+    const n = $("#ns").value.trim(); if (!n){ $("#ns-err").textContent = "பெயர் எழுதுங்க."; return; }
+    const ns = newShop(n); shopId = ns.id; R = null; persist(); closeSheet(); loadShop();
+  }
+});
+document.addEventListener("change", e => {
+  if (e.target.id === "imp"){ importFile(e.target.files[0]); e.target.value = ""; return; }
+  if (e.target.id === "file"){ doScan(e.target.files[0]); e.target.value = ""; return; }
+  if (e.target.id === "shopsel"){ shopId = e.target.value; R = null; loadShop(); return; }
+  const row = e.target.closest(".ln"); if (!row || !R) return;
+  const l = R.lines.find(x => x.id === row.dataset.lid), fld = e.target.dataset.f; if (!l) return;
+  if (fld === "include"){ l.include = e.target.checked; row.classList.toggle("off", !l.include); }
+  else if (fld === "brand"){ l.brand = e.target.value; if (l.unclear) l.ok = false; }
+  else if (fld === "colour"){ l.colour = e.target.value; if (l.unclear) l.ok = false; }
+  refreshReview();
+});
+document.addEventListener("input", e => {
+  if (!R) return;
+  if (e.target.id === "r-no"){ R.docNo = e.target.value; refreshReview(); return; }
+  if (e.target.id === "r-party"){ R.party = e.target.value; return; }
+  const row = e.target.closest(".ln"); if (!row) return;
+  const l = R.lines.find(x => x.id === row.dataset.lid);
+  if (l && e.target.dataset.f === "pcs"){ const n = parseInt(e.target.value.replace(/[^\d]/g, ""), 10); l.pcs = Number.isFinite(n) ? n : NaN; if (l.unclear) l.ok = false; refreshReview(); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
+
+boot();
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>

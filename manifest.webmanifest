@@ -1,9 +1,9 @@
 {
-  "name": "கடை ஸ்டாக் புக்",
-  "short_name": "ஸ்டாக் புக்",
+  "name": "Sai Textile Stock Book",
+  "short_name": "Stock Book",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#F2F3F8",
-  "theme_color": "#27358F",
+  "background_color": "#1B120D",
+  "theme_color": "#1B120D",
   "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
 }

@@ -3,23 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#27358F">
+<meta name="theme-color" content="#1B120D">
 <title>Sai Textile Stock Book</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 :root{
-  color-scheme:light;
-  --bg:#F2F3F8; --surface:#FFFFFF; --fg:#161B33; --muted:#586080; --line:#D5D9E8;
-  --accent:#27358F; --accent-fg:#FFFFFF; --accent-soft:#E3E7F8;
-  --up:#19703F; --upbg:#D8F0E2; --down:#A8321A; --downbg:#FBDDD4; --note:#7A5200; --notebg:#FFF0C9;
+  color-scheme:dark;
+  --bg:#1B120D; --surface:#291C14; --fg:#E3D6C8; --muted:#A38F7D; --line:#463427;
+  --accent:#C9783A; --accent-fg:#1B0F06; --accent-soft:#3A2515;
+  --up:#7FBF9A; --upbg:#14291F; --down:#E39A86; --downbg:#35201A; --note:#E2B873; --notebg:#322712;
   --font-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
-@media (prefers-color-scheme:dark){:root{
-  color-scheme:dark;
-  --bg:#0F1224; --surface:#181C36; --fg:#E8EAF8; --muted:#9AA2C8; --line:#2B3158;
-  --accent:#9DAAF5; --accent-fg:#0F1224; --accent-soft:#232A55;
-  --up:#6FD39B; --upbg:#14352A; --down:#FF9C86; --downbg:#3C1F1A; --note:#F2C265; --notebg:#3A2E10}}
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.5;margin:0;
@@ -62,6 +57,7 @@ td button{all:unset;display:block;width:100%;min-height:52px;line-height:52px;cu
 td button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
 td button.zero{color:var(--muted);font-weight:400} td button.neg{color:var(--down)}
 .row-actions{display:flex;gap:8px;flex-wrap:wrap}
+
 .bname{all:unset;font-weight:600;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;color:var(--accent)}
 .bname:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 button.draft{background:var(--surface);width:100%;min-height:48px;padding:6px 12px;font-weight:500;text-align:left;border:1px solid var(--line);border-radius:10px}
@@ -120,6 +116,8 @@ details.adv summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:20;max-width:90%;font-weight:600}
 [hidden]{display:none!important}
 @media (max-width:420px){.ln{grid-template-columns:auto 1fr 1fr}.ln .q{grid-column:2/-1}}
+.tot b{color:#D98544}.tabs button[aria-selected="true"]{background:#C9783A;color:#1B0F06}.bname{color:#D9955E}
+.dot{filter:saturate(.8) brightness(.85)}.dot.Black{border-color:#BFA995;filter:none}
 </style>
 </head>
 <body>
@@ -138,7 +136,7 @@ details.adv summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;
 <div id="toast" class="toast" hidden></div>
 
 <script>
-const APP_VERSION = "v3 (2026-11-14)";
+const APP_VERSION = "v4 (2026-11-15)";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const f = n => Math.round(n).toLocaleString("en-IN");

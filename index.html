@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1B120D">
+<title>Sai Textile Stock Book</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#241513; --surface:#33201C; --fg:#F3E2C8; --muted:#C2A58A; --line:#4C312A;
+  --accent:#E3B68C; --accent-fg:#2A1410; --accent-soft:#4A2A22;
+  --up:#7FBF9A; --upbg:#14291F; --down:#E8A58A; --downbg:#3A211C; --note:#E2B873; --notebg:#322712;
+  --font-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.5;margin:0;
+  padding-block:calc(12px + env(safe-area-inset-top,0px)) calc(100px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{margin:0;line-height:1.25}
+
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.top h1{font-size:1.45rem}
+.sync{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.sync.live i{background:var(--up)} .sync.err i{background:var(--down)}
+.tot{display:block;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.tot div{padding:10px 14px}
+.tot small{display:block;color:var(--muted);font-size:.78rem}
+.tot b{font-size:1.5rem;font-variant-numeric:tabular-nums}
+
+.note{background:var(--notebg);color:var(--note);border-radius:12px;padding:10px 14px;font-size:.92rem}
+.btn{min-height:48px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);padding:0 16px;font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:default}
+.f{width:100%;min-height:46px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 12px}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:3px}
+
+.gridwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:430px;font-variant-numeric:tabular-nums}
+th,td{padding:0;text-align:center;border-bottom:1px solid var(--line)}
+tr:last-child>*{border-bottom:0}
+thead th{font-size:.72rem;color:var(--muted);font-weight:600;padding:8px 2px}
+.dot{display:block;width:12px;height:12px;border-radius:50%;margin:0 auto 2px;border:1.5px solid var(--muted)}
+.dot.White{background:#fff} .dot.Orange{background:#F28C28;border-color:#F28C28} .dot.Red{background:#D62F2F;border-color:#D62F2F}
+.dot.Yellow{background:#F4D23A;border-color:#F4D23A} .dot.Gold{background:#C99A2E;border-color:#C99A2E} .dot.Black{background:#111;border-color:#111}
+tbody th{text-align:left;padding:8px 6px 8px 12px;font-weight:600;white-space:nowrap}
+tbody th small{display:block;font-weight:400;color:var(--muted);font-size:.72rem}
+td button{all:unset;display:block;width:100%;min-height:52px;line-height:52px;cursor:pointer;font-weight:600;font-size:.95rem}
+td button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+td button.zero{color:var(--muted);font-weight:400} td button.neg{color:var(--down)}
+.row-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.bname{all:unset;font-weight:600;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;color:var(--accent)}
+.bname:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.draft{background:var(--surface);width:100%;min-height:48px;padding:6px 12px;font-weight:500;text-align:left;border:1px solid var(--line);border-radius:10px}
+.btn.danger{background:var(--down);border-color:var(--down);color:#fff}
+details.adv summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.card h2{font-size:1.1rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{min-height:52px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);font-weight:700;line-height:1.2}
+.seg button[aria-pressed="true"].add{background:var(--upbg);border-color:var(--up);color:var(--up)}
+.seg button[aria-pressed="true"].less{background:var(--downbg);border-color:var(--down);color:var(--down)}
+.hint{margin:0;color:var(--muted);font-size:.88rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;border-radius:999px;border:1.5px solid var(--line);background:var(--bg);padding:0 16px;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.picked{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1.5px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:6px 6px 6px 14px;font-weight:700}
+.picked .btn{min-height:38px;font-size:.85rem}
+.draft{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:6px 6px 6px 12px}
+.draft .btn{min-height:38px;padding:0 12px}
+
+.rev .meta{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ln{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;grid-template-columns:auto 1fr 1fr 96px;gap:8px;align-items:center}
+.ln.off{opacity:.5}
+.ln.warn{border-color:var(--note);background:var(--notebg)}
+.ln .msg{grid-column:1/-1;font-size:.84rem;color:var(--note);display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.ln .msg button{min-height:36px;padding:0 12px;border-radius:8px;border:1.5px solid var(--note);background:transparent;color:var(--note);font-weight:600}
+.ln input[type=checkbox]{width:22px;height:22px}
+.ln .f{min-height:42px;padding:6px 8px}
+.sum{font-weight:700;font-variant-numeric:tabular-nums}
+.sum.add{color:var(--up)} .sum.less{color:var(--down)}
+.err{color:var(--down);font-weight:600;margin:0}
+
+.logrow{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.logrow.undone{opacity:.5}
+.logrow header{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{border-radius:999px;padding:0 10px;font-size:.78rem;font-weight:700}
+.pill.in{background:var(--upbg);color:var(--up)} .pill.out{background:var(--downbg);color:var(--down)} .pill.set{background:var(--accent-soft);color:var(--accent)}
+.logrow ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:2px 14px;font-size:.9rem;font-variant-numeric:tabular-nums}
+.logrow li{display:flex;justify-content:space-between;gap:8px}
+.logrow small{color:var(--muted)}
+.logrow .btn{min-height:38px;font-size:.85rem;padding:0 12px}
+.empty{text-align:center;color:var(--muted);padding:28px 12px;background:var(--surface);border:1px dashed var(--line);border-radius:12px}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:5;
+  padding:6px max(16px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px))}
+.tabs div{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tabs button{min-height:48px;border:0;border-radius:10px;background:transparent;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent)}
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:11;background:var(--surface);border-radius:18px 18px 0 0;max-height:92%;overflow-y:auto;
+  padding:18px max(16px,env(safe-area-inset-left,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px));box-shadow:0 -6px 24px rgba(0,0,0,.25)}
+#sheet .in{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.btns{display:flex;gap:10px}.btns .btn{flex:1}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:20;max-width:90%;font-weight:600}
+[hidden]{display:none!important}
+@media (max-width:420px){.ln{grid-template-columns:auto 1fr 1fr}.ln .q{grid-column:2/-1}}
+.tot b{color:#F0D9B5}.tabs{background:#1B100E}.tabs button[aria-selected="true"]{background:#B8603C;color:#FBEBD3}.bname{color:#F0D9B5}
+.dot.Black{border-color:#D2A06E}
+td button{background:#3B2723;border:1px solid #4C312A}td button.zero{color:#8A7260}td button.neg{background:#8E2F22;color:#FBEBD3}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><h1>Sai Textile</h1><div style="display:flex;align-items:center;gap:10px"><div id="sync" class="sync"><i></i><span>Loading…</span></div><button class="btn" data-act="settings" style="min-height:40px;padding:0 12px">Settings</button></div></header>
+  <section class="tot" id="tot"></section>
+  <main id="main"></main>
+</div>
+<nav class="tabs" aria-label="Sections"><div>
+  <button data-act="tab" data-t="stock" aria-selected="true">Stock</button>
+  <button data-act="tab" data-t="add" aria-selected="false">Entry</button>
+  <button data-act="tab" data-t="log" aria-selected="false">History</button>
+</div></nav>
+<div id="scrim" hidden data-act="close"></div>
+<div id="sheet" role="dialog" aria-modal="true" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+const APP_VERSION = "v5 (2026-11-17)";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const f = n => Math.round(n).toLocaleString("en-IN");
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const COLOURS = ["White","Orange","Red","Yellow","Gold","Black"];
+const key = (b, c) => b + "|" + c;
+const LS = {get(k){ try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch (e) {} }};
+
+const DEFAULT_BRANDS = ["Jupiter","Tata","Silver","Popular","Blue Star","World Cup","VIP","Gold King"];
+const KEY = "sb-local-v1", LOG_LIMIT = 1000, DEFAULT_MODEL = "gemini-3.6-flash";
+let DB = null, storageOk = true, pendingImport = null;
+let S = null, tab = "stock", R = null, scanning = false, scanErr = "", addKind = "in", ctl = null, busy = false, shopId = "";
+let M = {brand: "", colour: "White", pcs: ""}, draft = [], addErr = "";
+
+/* ---------- local storage on this phone ---------- */
+function newShop(name){ const id = uid(); DB.shops[id] = {id, name, brands: DEFAULT_BRANDS.slice(), stock: {}, log: [], rev: 1}; DB.order.push(id); return DB.shops[id]; }
+function loadDB(){
+  try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) { storageOk = false; }
+  if (!DB || !Array.isArray(DB.order) || !DB.order.length){ DB = {shops: {}, order: [], lastBackup: 0}; newShop("Sai Textile"); persist(); }
+}
+function persist(){ try { localStorage.setItem(KEY, JSON.stringify(DB)); storageOk = true; } catch (e) { storageOk = false; } setSync(storageOk ? "live" : "err"); }
+function setSync(k){ const el = $("#sync"), t = {live:"Saved on this phone", err:"Cannot save"};
+  el.className = "sync " + (k === "live" ? "live" : k === "err" ? "err" : ""); el.querySelector("span").textContent = t[k] || ""; }
+function toast(t){ const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 2600); }
+
+/* ---------- changes to the stock ---------- */
+function applyEntry(shop, body){
+  const sign = body.kind === "in" ? 1 : -1, lines = [];
+  if (!Array.isArray(body.lines) || !body.lines.length) throw new Error("no lines");
+  for (const l of body.lines){
+    const brand = String(l.brand || "").trim().slice(0, 40), pcs = Number(l.pcs);
+    if (!brand || !COLOURS.includes(l.colour) || !Number.isInteger(pcs) || pcs <= 0) throw new Error("invalid line");
+    if (!shop.brands.includes(brand)) shop.brands.push(brand);
+    const k = key(brand, l.colour); shop.stock[k] = (shop.stock[k] || 0) + sign * pcs; lines.push({k, d: sign * pcs});
+  }
+  shop.log.unshift({id: uid(), ts: Date.now(), kind: body.kind, docNo: String(body.docNo || "").slice(0, 30), party: String(body.party || "").slice(0, 60), lines});
+  if (shop.log.length > LOG_LIMIT) shop.log.length = LOG_LIMIT;
+  shop.rev++;
+}
+function applySet(shop, body){
+  const to = Number(body.to), k = key(body.brand, body.colour), from = shop.stock[k] || 0;
+  if (!shop.brands.includes(body.brand) || !COLOURS.includes(body.colour) || !Number.isInteger(to)) throw new Error("invalid number");
+  if (from === to) return;
+  shop.stock[k] = to; shop.log.unshift({id: uid(), ts: Date.now(), kind: "set", docNo: "", party: "", lines: [{k, from, to}]});
+  if (shop.log.length > LOG_LIMIT) shop.log.length = LOG_LIMIT;
+  shop.rev++;
+}
+function applyUndo(shop, body){
+  const e = shop.log.find(x => x.id === body.id); if (!e || e.undone) return;
+  e.lines.forEach(l => { shop.stock[l.k] = (shop.stock[l.k] || 0) + (e.kind === "set" ? l.from - l.to : -l.d); });
+  e.undone = true; shop.rev++;
+}
+function applyBrand(shop, body){
+  const name = String(body.name || "").trim().slice(0, 30);
+  if (!name) throw new Error("name is empty");
+  if (shop.brands.some(b => b.toLowerCase() === name.toLowerCase())) throw new Error("this brand already exists");
+  shop.brands.push(name); shop.rev++;
+}
+function purgeBrandLog(shop, brand){
+  const pre = brand + "|";
+  shop.log.forEach(e => { e.lines = e.lines.filter(l => !String(l.k).startsWith(pre)); });
+  shop.log = shop.log.filter(e => e.lines.length);
+}
+function applyClearBrand(shop, body){
+  const pre = body.brand + "|";
+  if (!shop.brands.includes(body.brand)) throw new Error("unknown brand");
+  Object.keys(shop.stock).forEach(k => { if (k.startsWith(pre)) delete shop.stock[k]; });
+  purgeBrandLog(shop, body.brand); shop.rev++;
+}
+function applyRemoveBrand(shop, body){
+  const pre = body.brand + "|";
+  if (!shop.brands.includes(body.brand)) throw new Error("unknown brand");
+  if (Object.keys(shop.stock).some(k => k.startsWith(pre) && shop.stock[k] !== 0)) throw new Error("brand still has stock");
+  Object.keys(shop.stock).forEach(k => { if (k.startsWith(pre)) delete shop.stock[k]; });
+  purgeBrandLog(shop, body.brand);
+  shop.brands = shop.brands.filter(x => x !== body.brand); shop.rev++;
+}
+async function mutate(path, body){
+  try {
+    const shop = DB.shops[shopId];
+    if (path === "/entries") applyEntry(shop, body);
+    else if (path === "/set") applySet(shop, body);
+    else if (path === "/undo") applyUndo(shop, body);
+    else if (path === "/brands") applyBrand(shop, body);
+    else if (path === "/clearbrand") applyClearBrand(shop, body);
+    else if (path === "/removebrand") applyRemoveBrand(shop, body);
+    persist(); S = shop; return storageOk;
+  } catch (e) { toast("Could not save: " + e.message); return false; }
+}
+
+/* ---------- start ---------- */
+function loadShop(){ S = DB.shops[shopId]; render(); }
+function boot(){
+  loadDB();
+  shopId = DB.order[0];
+  setSync(storageOk ? "live" : "err");
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+  loadShop();
+}
+
+/* ---------- photo scan: this phone calls the Google Gemini API directly with your own free key ---------- */
+const apiKey = () => LS.get("sb-gkey") || "";
+function scanPrompt(kind, brands){
+  return `You are reading a photo of handwritten Indian textile trade paperwork for a gamchha (cotton towel) wholesaler. The photo is a ${kind === "out" ? "customer ORDER FORM (indent form)" : "STOCK BOOK page"}.
+Known brands: ${brands.join(", ")}. Colours: White, Orange, Red, Yellow, Gold, Black. Shorthand: O=Orange, R=Red, Y=Yellow, G or M=Gold, W=White, WC=World Cup. "Mango" means Gold and "Lemon" means Yellow (Gold and Mango are the same colour; Lemon and Yellow are the same colour).
+Rules:
+- 1 bale = 600 pieces. If a quantity is written in bales ("One Bale", "2 bales"), convert it to pieces: One Bale = 600 pcs, Two Bale = 1200 pcs. Always return pieces.
+- A heading like "Gamchha Jupiter Colour: Red 200, Orange 200" means separate lines Jupiter Red 200, Jupiter Orange 200. "Gamchha Tata White 300pc" means Tata White 300. "Popular Colour Orange 100" means Popular Orange 100.
+- Rates or prices (e.g. 53/-, 66=00) are NOT quantities. Ignore them. Ignore transport, address and phone numbers.
+- Stock book pages: the quantity is the number written just before the brand name (the Pcs/Mts column). Particulars read "Brand - Colour - Party". If only the brand name is written with no colour, the colour is White; if a colour is written, use it. If the colours are split inline (e.g. "Y-507 R-116") make one line per colour.
+- Skip lines that are crossed out and mention them in notes.
+- NEVER guess. If a quantity, brand or colour is blurry, overwritten or ambiguous, still return the line with "unclear": true, a short English "note" saying what is unclear, and "pcs": null if the number cannot be read.
+Reply with ONLY this JSON:
+{"doc_no": string or null, "date": "DD-MM-YYYY" or null, "party": string or null, "lines": [{"brand": string, "colour": string, "pcs": number or null, "unclear": boolean, "note": string}], "notes": string}`;
+}
+function extractJson(text){
+  const t = String(text || ""), fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+  return JSON.parse(fence ? fence[1] : t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1));
+}
+const GBASE = "https://generativelanguage.googleapis.com/v1beta/";
+async function pickModel(k, signal){
+  const res = await fetch(GBASE + "models?pageSize=200", {signal, headers: {"x-goog-api-key": k}});
+  if (!res.ok) return "";
+  const data = await res.json(), all = (data.models || []).filter(m => (m.supportedGenerationMethods || []).includes("generateContent")).map(m => String(m.name || "").replace(/^models\//, ""));
+  const ver = n => { const m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; };
+  const rank = list => list.sort((a, b) => ver(b) - ver(a) || a.length - b.length)[0] || "";
+  const flash = all.filter(n => /gemini-[\d.]+-flash/.test(n) && !/(lite|image|tts|live|audio|embedding|thinking|robotics|computer)/.test(n));
+  return rank(flash.filter(n => !/(preview|exp|latest)/.test(n))) || rank(flash) || rank(all.filter(n => /flash/.test(n) && !/(image|tts|live|audio)/.test(n)));
+}
+async function callGemini(kind, image, signal){
+  const k = apiKey(), fail = c => { const e = new Error(c); e.code = c; return e; };
+  if (!k) throw fail("no_key");
+  let model = (LS.get("sb-gmodel") || DEFAULT_MODEL).trim(), tried = false, res;
+  const body = JSON.stringify({contents: [{parts: [{inline_data: {mime_type: "image/jpeg", data: image}}, {text: scanPrompt(kind, S.brands)}]}],
+    generationConfig: {temperature: 0, responseMimeType: "application/json", maxOutputTokens: 8192}});
+  for (;;){
+    try {
+      res = await fetch(GBASE + "models/" + encodeURIComponent(model) + ":generateContent", {method: "POST", signal, headers: {"content-type": "application/json", "x-goog-api-key": k}, body});
+    } catch (e) { if (e.name === "AbortError") throw e; throw fail("network"); }
+    if (res.status === 404 && !tried){
+      tried = true;
+      let alt = "";
+      try { alt = await pickModel(k, signal); } catch (e) { if (e.name === "AbortError") throw e; }
+      if (alt && alt !== model){ model = alt; LS.set("sb-gmodel", alt); toast("Scan model switched to " + alt); continue; }
+    }
+    break;
+  }
+  if (!res.ok){
+    const txt = await res.text().catch(() => "");
+    if (res.status === 401 || res.status === 403 || (res.status === 400 && /API[ _]KEY/i.test(txt))) throw fail("bad_key");
+    if (res.status === 404) throw fail("bad_model");
+    if (res.status === 429) throw fail("rate_limited");
+    throw fail("upstream");
+  }
+  const data = await res.json();
+  const text = ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || []).map(p => p.text || "").join("\n");
+  try { return extractJson(text); } catch (e) { throw fail("invalid_json"); }
+}
+
+/* ---------- backup, share and restore ---------- */
+function backupNote(){
+  if (!storageOk) return `<div class="note" style="margin-bottom:12px">This browser cannot save data. It may be a private window. Open it in a normal window.</div>`;
+  if (!DB.order.some(id => DB.shops[id].log.length)) return "";
+  const d = DB.lastBackup ? Math.floor((Date.now() - DB.lastBackup) / 86400000) : null;
+  if (d !== null && d < 7) return "";
+  return `<div class="note" style="margin-bottom:12px">${d === null ? "No backup yet." : "Last backup was " + d + " days ago."} <button class="btn" style="min-height:36px;margin-left:6px" data-act="dl" data-f="backup.json">Back up now</button></div>`;
+}
+function saveBlob(blob, name){
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+/* In the Android app this opens the phone's share sheet (WhatsApp, Drive, Save to device...). In a browser it downloads the file. */
+async function outFile(name, text, mime){
+  const C = window.Capacitor, P = C && C.Plugins, native = !!(C && C.isNativePlatform && C.isNativePlatform());
+  if (native && P && P.Filesystem && P.Share){
+    await P.Filesystem.writeFile({path: name, data: text, directory: "CACHE", encoding: "utf8"});
+    const u = await P.Filesystem.getUri({path: name, directory: "CACHE"});
+    await P.Share.share({title: name, files: [u.uri], dialogTitle: "Share or save"});
+    return;
+  }
+  const file = new File([text], name, {type: mime});
+  if (/Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.canShare && navigator.canShare({files: [file]})){
+    try { await navigator.share({files: [file], title: name}); return; } catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  saveBlob(new Blob([text], {type: mime}), name);
+}
+function importFile(file){
+  if (!file) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      const d = JSON.parse(String(fr.result));
+      const ok = d && typeof d.shops === "object" && Array.isArray(d.order) && d.order.length && d.order.every(id => d.shops[id] && Array.isArray(d.shops[id].brands) && d.shops[id].stock && Array.isArray(d.shops[id].log));
+      if (!ok) throw new Error("bad");
+      pendingImport = d;
+      const pcs = Object.values(d.shops[d.order[0]].stock).reduce((a, x) => a + (Number(x) || 0), 0);
+      openSheet(`<h3>Restore this data?</h3><p class="hint">This file holds ${f(pcs)} pieces in stock. All data now on this phone will be replaced by the data in this file.</p>
+        <div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="do-import">Restore</button></div>`);
+    } catch (e) { toast("This is not a valid stock data file."); }
+  };
+  fr.readAsText(file);
+}
+function openSettings(){
+  const d = DB.lastBackup ? Math.floor((Date.now() - DB.lastBackup) / 86400000) : null;
+  openSheet(`<h3>Settings</h3><p class="hint">App version: ${APP_VERSION}</p>
+    <div class="card"><h2>Backup and share data</h2>
+      <p class="hint">Your data is stored on this phone only. If you uninstall the app, clear its data or lose the phone, the stock is lost. Back up often and keep the file in Google Drive.</p>
+      <p class="hint">${d === null ? "No backup taken yet." : "Last backup: " + (d === 0 ? "today" : d + " days ago") + "."}</p>
+      <div class="row-actions"><button class="btn primary" data-act="dl" data-f="backup.json">Back up / Share data</button><button class="btn" data-act="import-pick">Restore from file</button><button class="btn" data-act="dl" data-f="export.csv">Stock CSV</button></div>
+      <p class="hint">To share with another person: tap "Back up / Share data" and choose WhatsApp. On their phone, open this app, go to Settings, tap "Restore from file" and pick the file.</p>
+      <input id="imp" type="file" style="display:none"></div>
+    <div class="card"><h2>Photo scan (Google Gemini)</h2>
+      <p class="hint">Paste your free Gemini API key from aistudio.google.com. It is kept only on this phone. When you scan, the photo is sent to Google. On the free plan Google may use it to improve its products, so avoid scanning pages with private details.</p>
+      <div><label for="k">Gemini API key</label><input id="k" class="f" type="password" autocomplete="off" value="${esc(apiKey())}" placeholder="AIza..."></div>
+      <div><label for="m">Model (change only if scanning stops working)</label><input id="m" class="f" autocomplete="off" value="${esc(LS.get("sb-gmodel") || DEFAULT_MODEL)}"></div>
+      <div class="btns"><button class="btn" data-act="clear-key">Remove key</button><button class="btn primary" data-act="save-key">Save</button></div></div>
+    <div class="card"><details class="adv"><summary>Clear data (advanced)</summary>
+      <p class="hint" style="margin:6px 0 10px">Clears one brand completely: all its colours go to 0 and its history lines are deleted. This cannot be undone. Take a backup first.</p>
+      <div><label for="cb">Brand</label><select id="cb" class="f">${S.brands.map(b => `<option>${esc(b)}</option>`).join("")}</select></div>
+      <button class="btn danger" style="margin-top:10px;width:100%" data-act="clear-quality-ask">Clear this brand…</button></details></div>
+    <button class="btn" data-act="close">Close</button>`);
+}
+async function download(file){
+  const day = new Date().toISOString().slice(0, 10);
+  try {
+    if (file === "backup.json"){
+      await outFile("stock-backup-" + day + ".json", JSON.stringify(DB), "application/json");
+      DB.lastBackup = Date.now(); persist(); toast("Backup file ready. Keep it in Google Drive."); render();
+    } else {
+      const q = (b, c) => S.stock[key(b, c)] || 0, rows = [["Brand"].concat(COLOURS).concat(["Total pcs"])];
+      S.brands.forEach(b => { const v = COLOURS.map(c => q(b, c)), t = v.reduce((a, x) => a + x, 0); rows.push([b].concat(v).concat([t])); });
+      const cell = x => /[",\n]/.test(String(x)) ? '"' + String(x).replace(/"/g, '""') + '"' : String(x);
+      await outFile("stock-" + day + ".csv", "﻿" + rows.map(r => r.map(cell).join(",")).join("\r\n"), "text/csv");
+    }
+  } catch (e) { if (!/cancel/i.test(String(e && (e.message || e)))) toast("Could not create the file. Try again."); }
+}
+
+/* ---------- render ---------- */
+const qty = (b, c) => S.stock[key(b, c)] || 0;
+const brandTotal = b => COLOURS.reduce((a, c) => a + qty(b, c), 0);
+function render(){
+  if (!S) return;
+  const all = S.brands.reduce((a, b) => a + brandTotal(b), 0);
+  $("#tot").innerHTML = `<div><small>Total pieces</small><b>${f(all)}</b></div>`;
+  document.querySelectorAll(".tabs [data-t]").forEach(b => b.setAttribute("aria-selected", b.dataset.t === tab));
+  if (tab === "stock") renderStock(); else if (tab === "add") renderAdd(); else renderLog();
+}
+function renderStock(){
+  const zero = S.brands.every(b => brandTotal(b) === 0);
+  const head = "<thead><tr><th></th>" + COLOURS.map(c => `<th scope="col"><i class="dot ${c}"></i>${c}</th>`).join("") + "</tr></thead>";
+  const body = S.brands.map(b => `<tr><th scope="row"><button class="bname" data-act="brand" data-b="${esc(b)}">${esc(b)}</button><small>${f(brandTotal(b))} pcs</small></th>` +
+    COLOURS.map(c => { const v = qty(b, c); return `<td><button data-act="cell" data-b="${esc(b)}" data-c="${c}" class="${v === 0 ? "zero" : v < 0 ? "neg" : ""}" aria-label="${esc(b)} ${c} ${f(v)}">${f(v)}</button></td>`; }).join("") + "</tr>").join("");
+  $("#main").innerHTML = backupNote() + (zero ? `<div class="note" style="margin-bottom:12px">No opening stock yet. Tap each box and enter the number of pieces you have now.</div>` : "") +
+    `<div class="gridwrap"><table>${head}<tbody>${body}</tbody></table></div>
+     <p class="hint" style="margin-top:8px">Tap a brand name to see its colours. Hold it to remove the brand.</p>
+     <div class="row-actions" style="margin-top:12px"><button class="btn" data-act="add-brand">+ New brand</button>
+     <button class="btn" data-act="dl" data-f="export.csv">Stock CSV</button><button class="btn" data-act="dl" data-f="backup.json">Back up / Share</button></div>`;
+}
+function sugHtml(q){
+  q = q.trim().toLowerCase();
+  const list = S.brands.filter(b => !q || b.toLowerCase().includes(q))
+    .sort((a, b) => (b.toLowerCase().startsWith(q) ? 1 : 0) - (a.toLowerCase().startsWith(q) ? 1 : 0) || a.localeCompare(b)).slice(0, 10);
+  if (!list.length) return `<p class="hint">No brand matches "${esc(q)}". Add the brand on the Stock tab first.</p>`;
+  return `<div class="chips">${list.map(b => `<button class="chip" data-act="pick-brand" data-b="${esc(b)}">${esc(b)}</button>`).join("")}</div>`;
+}
+function renderAdd(){
+  if (R) return renderReview();
+  $("#main").innerHTML = `<div class="card">
+    <h2>What are you entering?</h2>
+    <div class="seg"><button class="add" data-act="kind" data-k="in" aria-pressed="${addKind === "in"}">Stock book<br><small>Adds stock</small></button>
+    <button class="less" data-act="kind" data-k="out" aria-pressed="${addKind === "out"}">Order form<br><small>Reduces stock</small></button></div>
+    <div><input id="file" type="file" accept="image/*" style="display:none">
+      ${apiKey() ? `<button class="btn primary" style="width:100%" data-act="pick" ${scanning ? "disabled" : ""}>${scanning ? "Scanning…" : "Take or choose a photo to scan"}</button>` : `<button class="btn primary" style="width:100%" data-act="settings">Add Gemini API key to enable scan</button>`}
+      ${scanning ? `<button class="btn" style="width:100%;margin-top:8px" data-act="stop-scan">Stop</button>` : ""}
+      <p class="hint" style="margin-top:6px">After scanning, the stock changes only when you review the numbers and tap Update.</p></div>
+    ${scanErr ? `<p class="err" role="alert">${esc(scanErr)}</p>` : ""}
+  </div>
+  <div class="card" style="margin-top:12px">
+    <h2>Add by hand</h2>
+    <div><label>Brand</label>
+      ${M.brand ? `<div class="picked"><span>${esc(M.brand)}</span><button class="btn" data-act="clear-brand">Change</button></div>`
+        : `<input id="bq" class="f" autocomplete="off" placeholder="Type to search brand…"><div id="sug" style="margin-top:8px">${sugHtml("")}</div>`}</div>
+    <div><label>Colour</label><div class="chips">${COLOURS.map(c => `<button class="chip" data-act="pick-col" data-c="${c}" aria-pressed="${M.colour === c}">${c}</button>`).join("")}</div></div>
+    <div><label for="mp">Pieces</label><input id="mp" class="f" inputmode="numeric" placeholder="e.g. 600" value="${esc(M.pcs)}"></div>
+    ${addErr ? `<p class="err" role="alert">${esc(addErr)}</p>` : ""}
+    <button class="btn primary" data-act="draft-add">Add line</button>
+    ${draft.length ? `<div style="display:flex;flex-direction:column;gap:8px">${draft.map(l => `<div class="draft"><span>${esc(l.brand)} · ${l.colour} · <b>${f(l.pcs)}</b> pcs</span><button class="btn" data-act="draft-del" data-id="${l.id}" aria-label="Remove line">✕</button></div>`).join("")}</div>
+      <button class="btn primary" data-act="draft-review">Review ${draft.length} line${draft.length > 1 ? "s" : ""} and update</button>` : ""}
+  </div>`;
+}
+
+/* ---------- review ---------- */
+function startReview(kind, lines, meta){
+  R = {kind, lines, docNo: meta.docNo || "", party: meta.party || "", date: meta.date || "", notes: meta.notes || ""};
+  if (kind === "in"){
+    const prev = new Set(); S.log.filter(e => !e.undone && e.kind === "in").forEach(e => e.lines.forEach(l => prev.add(l.k + "|" + l.d)));
+    R.lines.forEach(l => { if (prev.has(key(l.brand, l.colour) + "|" + l.pcs)){ l.include = false; l.note = (l.note ? l.note + " · " : "") + "This same number was already entered. Tick it if it is a new line."; } });
+  }
+  tab = "add"; render();
+}
+const isDup = () => R.docNo && S.log.some(e => !e.undone && e.docNo && e.docNo === R.docNo.trim() && e.kind === R.kind);
+const lineValid = l => S.brands.includes(l.brand) && COLOURS.includes(l.colour) && Number.isInteger(l.pcs) && l.pcs > 0;
+const lineReady = l => lineValid(l) && (!l.unclear || l.ok);
+function reviewState(){
+  const inc = R.lines.filter(l => l.include);
+  const total = inc.reduce((a, l) => a + (Number.isFinite(l.pcs) ? l.pcs : 0), 0);
+  return {inc, total, ready: inc.length > 0 && inc.every(lineReady)};
+}
+function renderReview(){
+  const cls = R.kind === "in" ? "add" : "less";
+  $("#main").innerHTML = `<div class="card rev">
+    <h2>${R.kind === "in" ? "Stock book: adds stock" : "Order form: reduces stock"}</h2>
+    <p class="hint">Check the numbers and fix any mistakes. Yellow lines are not saved until you confirm them.</p>
+    <div class="meta"><div><label for="r-no">Form number</label><input id="r-no" class="f" value="${esc(R.docNo)}"></div>
+    <div><label for="r-party">Party / name</label><input id="r-party" class="f" value="${esc(R.party)}"></div></div>
+    ${R.notes ? `<p class="hint">Scan note: ${esc(R.notes)}</p>` : ""}
+    <div id="r-dup"></div>
+    <div id="r-lines" style="display:flex;flex-direction:column;gap:8px">${R.lines.map(lineHtml).join("") || '<div class="empty">No lines found.</div>'}</div>
+    <button class="btn" data-act="add-line">+ Add line</button>
+    <div class="sum ${cls}" id="r-sum"></div>
+    <div class="btns"><button class="btn" data-act="cancel-review">Cancel</button><button class="btn primary" id="r-ok" data-act="confirm-review">Update</button></div>
+  </div>`;
+  refreshReview();
+}
+function lineHtml(l){
+  const warn = (l.unclear && !l.ok) || (l.note && !l.unclear);
+  return `<div class="ln ${l.include ? "" : "off"} ${warn ? "warn" : ""}" data-lid="${l.id}">
+    <input type="checkbox" data-f="include" ${l.include ? "checked" : ""} aria-label="Include">
+    <select class="f" data-f="brand" aria-label="Brand"><option value="">Brand?</option>${S.brands.map(b => `<option${b === l.brand ? " selected" : ""}>${esc(b)}</option>`).join("")}</select>
+    <select class="f" data-f="colour" aria-label="Colour"><option value="">Colour?</option>${COLOURS.map(c => `<option${c === l.colour ? " selected" : ""}>${c}</option>`).join("")}</select>
+    <input class="f q" data-f="pcs" inputmode="numeric" value="${Number.isFinite(l.pcs) ? l.pcs : ""}" placeholder="Pieces" aria-label="Pieces">
+    ${l.note || (l.unclear && !l.ok) ? `<div class="msg"><span>${esc(l.note || "Not clear")}</span>${l.unclear && !l.ok ? `<button data-act="confirm-line" data-lid="${l.id}">OK, I checked</button>` : ""}</div>` : ""}
+  </div>`;
+}
+function refreshReview(){
+  const {inc, total, ready} = reviewState(), sign = R.kind === "in" ? "+" : "−";
+  $("#r-sum").textContent = inc.length ? `${inc.length} line${inc.length > 1 ? "s" : ""}: ${sign}${f(total)} pcs` : "No line selected";
+  $("#r-ok").disabled = !ready || busy;
+  $("#r-dup").innerHTML = isDup() ? `<div class="note">Form number ${esc(R.docNo)} is already entered. Entering it again will change the stock twice.</div>` : "";
+}
+async function confirmReview(){
+  const {inc, ready} = reviewState(); if (!ready || busy) return;
+  busy = true; refreshReview();
+  const ok = await mutate("/entries", {kind: R.kind, docNo: R.docNo.trim(), party: R.party.trim(), lines: inc.map(l => ({brand: l.brand, colour: l.colour, pcs: l.pcs}))});
+  busy = false;
+  if (!ok){ refreshReview(); return; }
+  if (R.fromDraft) draft = [];
+  R = null; tab = "stock"; render(); toast("Stock updated");
+}
+
+/* ---------- scan ---------- */
+async function toJpegBase64(file){
+  const bmp = await createImageBitmap(file);
+  const sc = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.85));
+  return await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(",")[1]); fr.onerror = rej; fr.readAsDataURL(blob); });
+}
+const ERR = {no_key:"Add your Gemini API key in Settings to use scan.", bad_key:"The API key is wrong or not allowed. Check it in Settings.", rate_limited:"Too many scans right now (free limit). Wait a little and try again.",
+  invalid_json:"Could not read lines from the photo. Take a clear, straight photo in good light and try again.", network:"No internet, or cannot connect.", upstream:"The scan service had a problem. Try again.", bad_model:"The scan model name is not valid. Check the model in Settings."};
+async function doScan(file){
+  if (!file) return;
+  scanErr = ""; scanning = true; render();
+  ctl = new AbortController();
+  try {
+    const kind = addKind;
+    const image = await toJpegBase64(file);
+    const out = await callGemini(kind, image, ctl.signal);
+    const lines = (Array.isArray(out && out.lines) ? out.lines : []).map(l => {
+      const brand = S.brands.find(b => b.toLowerCase() === String(l.brand || "").trim().toLowerCase()) || "";
+      const colour = COLOURS.find(c => c.toLowerCase() === String(l.colour || "").trim().toLowerCase()) || "";
+      const pcs = l.pcs !== null && l.pcs !== undefined && Number.isFinite(+l.pcs) ? Math.round(+l.pcs) : NaN;
+      const unclear = !!l.unclear || !brand || !colour || !Number.isFinite(pcs);
+      const note = [l.note, !brand ? "Brand not recognised" : "", !colour ? "Colour not recognised" : ""].filter(Boolean).join(" · ");
+      return {id: uid(), brand, colour, pcs, include: true, unclear, ok: false, note};
+    });
+    scanning = false;
+    if (!lines.length){ scanErr = "No lines found in this photo. You can add them by hand."; render(); return; }
+    startReview(kind, lines, {docNo: out.doc_no || "", party: out.party || "", date: out.date || "", notes: out.notes || ""});
+  } catch (e) {
+    scanning = false;
+    if (e.name === "AbortError") { /* stopped by user */ }
+    else scanErr = ERR[e.code] || "Scan failed. Try again.";
+    render();
+  }
+}
+
+/* ---------- sheets ---------- */
+function openSheet(html, focus){ $("#sheet").innerHTML = `<div class="in">${html}</div>`; $("#sheet").hidden = false; $("#scrim").hidden = false; const x = focus && $(focus); if (x) x.focus(); }
+function closeSheet(){ $("#sheet").hidden = true; $("#scrim").hidden = true; $("#sheet").innerHTML = ""; }
+function openCell(b, c){
+  const v = qty(b, c);
+  openSheet(`<h3>${esc(b)} · ${c}</h3>
+    <p class="hint">Current stock: <b>${f(v)} pcs</b></p>
+    <div><label for="s-n">Counted stock (pieces)</label><input id="s-n" class="f" inputmode="numeric" value="${v}"></div>
+    <p id="s-err" class="err" role="alert"></p>
+    <div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="save-cell" data-b="${esc(b)}" data-c="${c}">Save</button></div>`, "#s-n");
+}
+async function saveCell(b, c){
+  const raw = $("#s-n").value.trim().replace(/,/g, ""), n = Number(raw); if (!raw || !isFinite(n)){ $("#s-err").textContent = "Enter a valid number."; return; }
+  const to = Math.round(n);
+  if (to === qty(b, c)){ closeSheet(); return; }
+  if (await mutate("/set", {brand: b, colour: c, to})){ closeSheet(); render(); toast("Stock saved"); }
+}
+
+function brandInfo(b){ const pre = b + "|"; let n = 0; S.log.forEach(e => { if (!e.undone && e.lines.some(l => String(l.k).startsWith(pre))) n++; }); return n; }
+function openBrand(b){
+  const rows = COLOURS.map(c => ({c, v: qty(b, c)}));
+  openSheet(`<h3>${esc(b)}</h3><p class="hint">Stock by colour. Tap a colour to correct it.</p>
+    <div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => `<button class="draft" data-act="cell" data-b="${esc(b)}" data-c="${r.c}"><span style="display:flex;align-items:center;gap:10px"><i class="dot ${r.c}" style="margin:0"></i>${r.c}</span><b style="font-variant-numeric:tabular-nums;${r.v === 0 ? "color:var(--muted);font-weight:400" : r.v < 0 ? "color:var(--down)" : ""}">${f(r.v)} pcs</b></button>`).join("")}</div>
+    <div class="tot" style="border-radius:10px"><div style="display:flex;justify-content:space-between;align-items:center"><small style="font-size:.95rem">Total ${esc(b)}</small><b>${f(brandTotal(b))} pcs</b></div></div>
+    <button class="btn" data-act="close">Close</button>`);
+}
+function openRemoveBrand(b){
+  const has = COLOURS.some(c => qty(b, c) !== 0) || Object.keys(S.stock).some(k => k.startsWith(b + "|") && S.stock[k] !== 0);
+  openSheet(`<h3>${esc(b)}</h3>
+    ${has ? `<div class="note">Cannot remove: ${f(brandTotal(b))} pcs are still in stock. Set the stock to 0 first (Settings > Clear data), then remove.</div><button class="btn" disabled>Remove brand</button>`
+      : `<p class="hint">No stock in this brand. Removing it deletes it from the list and deletes its history lines.</p><button class="btn danger" data-act="do-remove-brand" data-b="${esc(b)}">Remove brand</button>`}
+    <button class="btn" data-act="close">Close</button>`);
+}
+function openClearAsk(b){
+  const t = brandTotal(b), n = brandInfo(b);
+  openSheet(`<h3>Clear ${esc(b)}?</h3>
+    <div class="note">All colours of ${esc(b)} will be set to 0 (now ${f(t)} pcs) and ${n} history entr${n === 1 ? "y" : "ies"} will lose its ${esc(b)} lines. This cannot be undone.</div>
+    <button class="btn" data-act="dl" data-f="backup.json">Back up first</button>
+    <div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn danger" data-act="do-clear-quality" data-b="${esc(b)}">Clear ${esc(b)}</button></div>`);
+}
+
+/* ---------- history ---------- */
+function renderLog(){
+  const rows = S.log.map(e => {
+    const d = new Date(e.ts).toLocaleString("en-IN", {day: "numeric", month: "short", hour: "numeric", minute: "2-digit"});
+    const lab = e.kind === "in" ? "Stock book" : e.kind === "out" ? "Order" : "Stock correction";
+    const li = e.lines.map(l => { const [b, c] = l.k.split("|"); const v = e.kind === "set" ? `${f(l.from)} → ${f(l.to)}` : (l.d > 0 ? "+" : "−") + f(Math.abs(l.d));
+      return `<li><span>${esc(b)} ${esc(c)}</span><b>${v}</b></li>`; }).join("");
+    return `<article class="logrow ${e.undone ? "undone" : ""}"><header><span><span class="pill ${e.kind}">${lab}</span> ${e.docNo ? "#" + esc(e.docNo) : ""} ${e.party ? "· " + esc(e.party) : ""}</span><small>${d}</small></header><ul>${li}</ul>
+      ${e.undone ? `<small>Undone</small>` : `<div><button class="btn" data-act="undo" data-id="${esc(e.id)}">Undo this entry</button></div>`}</article>`;
+  }).join("");
+  $("#main").innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">${rows || '<div class="empty">Nothing yet. Add a stock book or order form entry on the Entry tab.</div>'}</div>`;
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const a = b.dataset.act;
+  if (a === "close" && b.id === "scrim" && Date.now() - lpOpenedAt < 800) return;
+  if (a === "tab"){ tab = b.dataset.t; render(); window.scrollTo(0, 0); }
+  else if (a === "brand"){ if (lpFired){ lpFired = false; return; } openBrand(b.dataset.b); }
+  else if (a === "do-remove-brand"){ if (await mutate("/removebrand", {brand: b.dataset.b})){ draft = draft.filter(x => x.brand !== b.dataset.b); if (M.brand === b.dataset.b) M.brand = ""; closeSheet(); render(); toast("Brand removed"); } }
+  else if (a === "clear-quality-ask"){ const sel = $("#cb"); if (sel && sel.value) openClearAsk(sel.value); }
+  else if (a === "do-clear-quality"){ if (await mutate("/clearbrand", {brand: b.dataset.b})){ closeSheet(); render(); toast(b.dataset.b + " cleared"); } }
+  else if (a === "cell") openCell(b.dataset.b, b.dataset.c);
+  else if (a === "save-cell") saveCell(b.dataset.b, b.dataset.c);
+  else if (a === "close") closeSheet();
+  else if (a === "kind"){ addKind = b.dataset.k; render(); }
+  else if (a === "pick") $("#file").click();
+  else if (a === "stop-scan") ctl && ctl.abort();
+  else if (a === "pick-brand"){ M.brand = b.dataset.b; addErr = ""; render(); const p = $("#mp"); if (p) p.focus(); }
+  else if (a === "clear-brand"){ M.brand = ""; render(); const q = $("#bq"); if (q) q.focus(); }
+  else if (a === "pick-col"){ M.colour = b.dataset.c; render(); }
+  else if (a === "draft-add"){
+    const n = parseInt(String(M.pcs).replace(/[^\d]/g, ""), 10);
+    if (!M.brand){ addErr = "Pick a brand first."; render(); return; }
+    if (!Number.isFinite(n) || n <= 0){ addErr = "Enter the number of pieces."; render(); return; }
+    draft.push({id: uid(), brand: M.brand, colour: M.colour, pcs: n});
+    M = {brand: "", colour: "White", pcs: ""}; addErr = ""; render();
+  }
+  else if (a === "draft-del"){ draft = draft.filter(x => x.id !== b.dataset.id); render(); }
+  else if (a === "draft-review"){
+    startReview(addKind, draft.map(l => ({id: uid(), brand: l.brand, colour: l.colour, pcs: l.pcs, include: true, unclear: false, ok: true, note: ""})), {});
+    R.fromDraft = true;
+  }
+  else if (a === "add-line"){ R.lines.push({id: uid(), brand: "", colour: "", pcs: NaN, include: true, unclear: false, ok: true, note: ""}); renderReview(); }
+  else if (a === "confirm-line"){ const l = R.lines.find(x => x.id === b.dataset.lid); if (l && lineValid(l)){ l.ok = true; renderReview(); } else toast("First fill in brand, colour and pieces"); }
+  else if (a === "cancel-review"){ R = null; render(); }
+  else if (a === "confirm-review") confirmReview();
+  else if (a === "undo"){ if (await mutate("/undo", {id: b.dataset.id})){ render(); toast("Entry undone"); } }
+  else if (a === "dl") download(b.dataset.f);
+  else if (a === "settings") openSettings();
+  else if (a === "save-key"){ LS.set("sb-gkey", $("#k").value.trim()); LS.set("sb-gmodel", ($("#m").value.trim() === DEFAULT_MODEL ? "" : $("#m").value.trim())); closeSheet(); render(); toast("Saved"); }
+  else if (a === "clear-key"){ LS.set("sb-gkey", ""); closeSheet(); render(); toast("API key removed"); }
+  else if (a === "import-pick") $("#imp").click();
+  else if (a === "do-import"){ if (pendingImport){ DB = pendingImport; pendingImport = null; persist(); shopId = DB.order[0]; R = null; draft = []; closeSheet(); loadShop(); toast("Data restored"); } }
+  else if (a === "add-brand"){
+    openSheet(`<h3>New brand</h3><div><label for="nb">Brand name</label><input id="nb" class="f" maxlength="30"></div><p id="nb-err" class="err" role="alert"></p>
+      <div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="save-brand">Add</button></div>`, "#nb");
+  }
+  else if (a === "save-brand"){
+    const n = $("#nb").value.trim(); if (!n){ $("#nb-err").textContent = "Enter a name."; return; }
+    if (S.brands.some(x => x.toLowerCase() === n.toLowerCase())){ $("#nb-err").textContent = "This brand already exists."; return; }
+    if (await mutate("/brands", {name: n})){ closeSheet(); render(); }
+  }
+});
+document.addEventListener("change", e => {
+  if (e.target.id === "imp"){ importFile(e.target.files[0]); e.target.value = ""; return; }
+  if (e.target.id === "file"){ doScan(e.target.files[0]); e.target.value = ""; return; }
+  const row = e.target.closest(".ln"); if (!row || !R) return;
+  const l = R.lines.find(x => x.id === row.dataset.lid), fld = e.target.dataset.f; if (!l) return;
+  if (fld === "include"){ l.include = e.target.checked; row.classList.toggle("off", !l.include); }
+  else if (fld === "brand"){ l.brand = e.target.value; if (l.unclear) l.ok = false; }
+  else if (fld === "colour"){ l.colour = e.target.value; if (l.unclear) l.ok = false; }
+  refreshReview();
+});
+document.addEventListener("input", e => {
+  if (e.target.id === "bq"){ $("#sug").innerHTML = sugHtml(e.target.value); return; }
+  if (e.target.id === "mp"){ M.pcs = e.target.value; return; }
+  if (!R) return;
+  if (e.target.id === "r-no"){ R.docNo = e.target.value; refreshReview(); return; }
+  if (e.target.id === "r-party"){ R.party = e.target.value; return; }
+  const row = e.target.closest(".ln"); if (!row) return;
+  const l = R.lines.find(x => x.id === row.dataset.lid);
+  if (l && e.target.dataset.f === "pcs"){ const n = parseInt(e.target.value.replace(/[^\d]/g, ""), 10); l.pcs = Number.isFinite(n) ? n : NaN; if (l.unclear) l.ok = false; refreshReview(); }
+});
+let lpTimer = null, lpFired = false, lpX = 0, lpY = 0, lpOpenedAt = 0;
+document.addEventListener("pointerdown", e => {
+  const t = e.target.closest && e.target.closest(".bname"); if (!t) return;
+  lpFired = false; clearTimeout(lpTimer); lpX = e.clientX; lpY = e.clientY;
+  lpTimer = setTimeout(() => { lpFired = true; lpOpenedAt = Date.now(); openRemoveBrand(t.dataset.b); }, 650);
+});
+["pointerup", "pointercancel", "pointermove", "scroll"].forEach(ev => document.addEventListener(ev, e => { if (ev === "pointermove" && Math.hypot(e.clientX - lpX, e.clientY - lpY) < 12) return; clearTimeout(lpTimer); }, true));
+document.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest(".bname")) e.preventDefault(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("#sheet").hidden) closeSheet();
+  if (e.key === "Enter" && e.target.id === "bq"){ const first = $("#sug [data-act=pick-brand]"); if (first){ e.preventDefault(); first.click(); } }
+});
+
+boot();
+if ("serviceWorker" in navigator && location.protocol.startsWith("http") && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>

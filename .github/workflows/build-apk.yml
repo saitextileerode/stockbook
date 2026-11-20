@@ -27,15 +27,15 @@ jobs:
           cp debug.keystore ~/.android/debug.keystore
       - run: npm install
       - run: npx cap add android
-      - name: Patch Android project (version number and fixed signing key)
+      - name: Patch Android project (fixed signing, version number, app icon)
         run: |
           python3 - <<'PY'
-          import re
+          import os, re
           p = "android/app/build.gradle"
           s = open(p).read()
-          s = re.sub(r"versionCode\s+\d+", "versionCode ${{ github.run_number }}", s, count=1)
-          s = re.sub(r'versionName\s+"[^"]*"', 'versionName "2.${{ github.run_number }}"', s, count=1)
-          sign = """android {
+          s = re.sub(r"versionCode\s+\d+", "versionCode " + os.environ.get("RUN_NO", "1"), s, count=1)
+          s = re.sub(r'versionName\s+"[^"]*"', 'versionName "6.' + os.environ.get('RUN_NO', '1') + '"', s, count=1)
+          block = '''
               signingConfigs {
                   debug {
                       storeFile file("../../debug.keystore")
@@ -44,22 +44,22 @@ jobs:
                       keyPassword "android"
                   }
               }
-          """
-          assert "android {" in s
-          s = s.replace("android {", sign, 1)
+          '''
+          s = re.sub(r"(android\s*\{)", lambda m: m.group(1) + block, s, count=1)
           open(p, "w").write(s)
           PY
-          grep -n "versionCode\|versionName\|storeFile" android/app/build.gradle
+          if [ -f android-icons.zip ]; then unzip -o android-icons.zip -d android/app/src/main/res/; fi
+        env:
+          RUN_NO: ${{ github.run_number }}
       - run: npx cap sync android
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug
       - name: Rename APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk StockBook.apk
-      - name: Show the signing fingerprint (should be the same in every build)
+      - name: Show signing fingerprint (must be the same in every build)
         run: |
-          keytool -list -v -keystore debug.keystore -storepass android | grep "SHA256" || true
-          "$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs StockBook.apk | grep -i "SHA-256" || true
+          keytool -printcert -jarfile StockBook.apk | grep -i "SHA256" || true
       - uses: actions/upload-artifact@v4
         with:
           name: StockBook-apk

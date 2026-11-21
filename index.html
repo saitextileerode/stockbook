@@ -149,7 +149,7 @@ textarea.f{width:100%;resize:vertical;min-height:110px}
 <div id="toast" class="toast" hidden></div>
 
 <script>
-const APP_VERSION = "v7 (2026-11-21)";
+const APP_VERSION = "v8 (2026-11-21)";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const f = n => Math.round(n).toLocaleString("en-IN");
@@ -403,12 +403,31 @@ function render(){
   $("#tot").innerHTML = `<div><small>Total pieces</small><b>${f(all)}</b></div>`;
   document.querySelectorAll(".tabs [data-t]").forEach(b => b.setAttribute("aria-selected", b.dataset.t === tab));
   if (tab === "stock") renderStock(); else if (tab === "add") renderAdd(); else renderLog();
+  syncHistory();
 }
+/* ---------- Back button: one history entry per open layer (sheet, review, non-Stock tab) ---------- */
+let pushedStates = 0, ignorePops = 0;
+function activeLayers(){ return (!$("#sheet").hidden ? 1 : 0) + (R ? 1 : 0) + (tab !== "stock" ? 1 : 0); }
+function syncHistory(){
+  try {
+    const want = activeLayers();
+    if (want > pushedStates){ while (pushedStates < want){ history.pushState({sb: ++pushedStates}, ""); } }
+    else if (want < pushedStates){ const n = pushedStates - want; pushedStates = want; ignorePops++; history.go(-n); }
+  } catch (e) {}
+}
+window.addEventListener("popstate", () => {
+  if (ignorePops > 0){ ignorePops--; return; }
+  if (pushedStates > 0) pushedStates--;
+  if (!$("#sheet").hidden){ $("#sheet").hidden = true; $("#scrim").hidden = true; $("#sheet").innerHTML = ""; }
+  else if (R){ R = null; }
+  else if (tab !== "stock"){ tab = "stock"; }
+  render(); window.scrollTo(0, 0);
+});
 function renderStock(){
   const zero = S.brands.every(b => brandTotal(b) === 0);
   const head = "<thead><tr><th></th>" + COLOURS.map(c => `<th scope="col"><i class="dot ${c}"></i>${c}</th>`).join("") + "</tr></thead>";
   const body = S.brands.map(b => `<tr><th scope="row"><button class="bname" data-act="brand" data-b="${esc(b)}">${esc(b)}</button><small>${f(brandTotal(b))} pcs</small></th>` +
-    COLOURS.map(c => { const v = qty(b, c); return `<td><button data-act="cell" data-b="${esc(b)}" data-c="${c}" class="${v === 0 ? "zero" : v < 0 ? "neg" : ""}" aria-label="${esc(b)} ${c} ${f(v)}">${f(v)}</button></td>`; }).join("") + "</tr>").join("");
+    COLOURS.map(c => { const v = qty(b, c); return `<td><button data-act="cell" data-b="${esc(b)}" data-c="${c}" class="${v === 0 ? "zero" : v < 0 ? "neg" : ""}" aria-label="${esc(b)} ${c} ${f(v)}">${v === 0 ? "" : f(v)}</button></td>`; }).join("") + "</tr>").join("");
   $("#main").innerHTML = backupNote() + (zero ? `<div class="note" style="margin-bottom:12px">No opening stock yet. Tap each box and enter the number of pieces you have now.</div>` : "") +
     `<div class="gridwrap"><table>${head}<tbody>${body}</tbody></table></div>
      <p class="hint" style="margin-top:8px">Tap a brand name to see its colours. Hold it to remove the brand.</p>
@@ -555,18 +574,20 @@ async function runScan(file, text){
 const doScan = file => runScan(file, "");
 
 /* ---------- sheets ---------- */
-function openSheet(html, focus){ $("#sheet").innerHTML = `<div class="in">${html}</div>`; $("#sheet").hidden = false; $("#scrim").hidden = false; const x = focus && $(focus); if (x) x.focus(); }
-function closeSheet(){ $("#sheet").hidden = true; $("#scrim").hidden = true; $("#sheet").innerHTML = ""; }
+function openSheet(html, focus){ $("#sheet").innerHTML = `<div class="in">${html}</div>`; $("#sheet").hidden = false; $("#scrim").hidden = false; const x = focus && $(focus); if (x){ x.focus(); try { const L = x.value.length; x.setSelectionRange(L, L); } catch (e) {} } syncHistory(); }
+function closeSheet(){ $("#sheet").hidden = true; $("#scrim").hidden = true; $("#sheet").innerHTML = ""; syncHistory(); }
 function openCell(b, c){
   const v = qty(b, c);
   openSheet(`<h3>${esc(b)} · ${c}</h3>
     <p class="hint">Current stock: <b>${f(v)} pcs</b></p>
-    <div><label for="s-n">Counted stock (pieces)</label><input id="s-n" class="f" inputmode="numeric" value="${v}"></div>
+    <div><label for="s-n">Counted stock (pieces)</label><input id="s-n" class="f" inputmode="numeric" style="text-align:right" value="${v === 0 ? "" : v}" placeholder="0"></div>
     <p id="s-err" class="err" role="alert"></p>
     <div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="save-cell" data-b="${esc(b)}" data-c="${c}">Save</button></div>`, "#s-n");
 }
 async function saveCell(b, c){
-  const raw = $("#s-n").value.trim().replace(/,/g, ""), n = Number(raw); if (!raw || !isFinite(n)){ $("#s-err").textContent = "Enter a valid number."; return; }
+  const raw = $("#s-n").value.trim().replace(/,/g, ""), n = Number(raw);
+  if (!raw && qty(b, c) === 0){ closeSheet(); return; }
+  if (!raw || !isFinite(n)){ $("#s-err").textContent = "Enter a valid number."; return; }
   const to = Math.round(n);
   if (to === qty(b, c)){ closeSheet(); return; }
   if (await mutate("/set", {brand: b, colour: c, to})){ closeSheet(); render(); toast("Stock saved"); }
@@ -647,7 +668,8 @@ document.addEventListener("click", async e => {
   else if (a === "confirm-line"){ const l = R.lines.find(x => x.id === b.dataset.lid); if (l && lineValid(l)){ l.ok = true; renderReview(); } else toast("First fill in brand, colour and pieces"); }
   else if (a === "cancel-review"){ R = null; render(); }
   else if (a === "confirm-review") confirmReview();
-  else if (a === "undo"){ if (await mutate("/undo", {id: b.dataset.id})){ render(); toast("Entry undone"); } }
+  else if (a === "undo"){ openSheet(`<h3>Are you sure?</h3><div class="note">This entry will be undone and the stock it changed will be put back.</div><div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn danger" data-act="undo-yes" data-id="${esc(b.dataset.id)}">Yes, undo</button></div>`); }
+  else if (a === "undo-yes"){ if (await mutate("/undo", {id: b.dataset.id})){ closeSheet(); render(); toast("Entry undone"); } }
   else if (a === "dl") download(b.dataset.f);
   else if (a === "settings") openSettings();
   else if (a === "save-key"){ LS.set("sb-gkey", $("#k").value.trim()); LS.set("sb-gmodel", ($("#m").value.trim() === DEFAULT_MODEL ? "" : $("#m").value.trim())); closeSheet(); render(); toast("Saved"); }

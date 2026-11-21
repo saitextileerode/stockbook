@@ -34,7 +34,7 @@ jobs:
           p = "android/app/build.gradle"
           s = open(p).read()
           s = re.sub(r"versionCode\s+\d+", "versionCode " + os.environ.get("RUN_NO", "1"), s, count=1)
-          s = re.sub(r'versionName\s+"[^"]*"', 'versionName "7.' + os.environ.get('RUN_NO', '1') + '"', s, count=1)
+          s = re.sub(r'versionName\s+"[^"]*"', 'versionName "8.' + os.environ.get('RUN_NO', '1') + '"', s, count=1)
           block = '''
               signingConfigs {
                   debug {
@@ -58,7 +58,7 @@ jobs:
             fi
           done
           mkdir -p $RES/values
-          printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#2B2B2B</color>\n</resources>\n' > $RES/values/ic_launcher_background.xml
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#151515</color>\n</resources>\n' > $RES/values/ic_launcher_background.xml
         env:
           RUN_NO: ${{ github.run_number }}
       - run: npx cap sync android

@@ -10,8 +10,8 @@
 <style>
 :root{
   color-scheme:dark;
-  --bg:#241513; --surface:#33201C; --fg:#F3E2C8; --muted:#C2A58A; --line:#4C312A;
-  --accent:#E3B68C; --accent-fg:#2A1410; --accent-soft:#4A2A22;
+  --bg:#1B100E; --surface:#261713; --fg:#F3E2C8; --muted:#B99D86; --line:#3B2721;
+  --accent:#E3B68C; --accent-fg:#2A1410; --accent-soft:#3F2420;
   --up:#7FBF9A; --upbg:#14291F; --down:#E8A58A; --downbg:#3A211C; --note:#E2B873; --notebg:#322712;
   --font-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
@@ -116,9 +116,9 @@ details.adv summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:20;max-width:90%;font-weight:600}
 [hidden]{display:none!important}
 @media (max-width:420px){.ln{grid-template-columns:auto 1fr 1fr}.ln .q{grid-column:2/-1}}
-.tot b{color:#F0D9B5}.tabs{background:#1B100E}.tabs button[aria-selected="true"]{background:#B8603C;color:#FBEBD3}.bname{color:#F0D9B5}
+.tot b{color:#F0D9B5}.tabs{background:#150C0A;border-top-color:#2E1D18}.tabs button[aria-selected="true"]{background:#B8603C;color:#FBEBD3}.bname{color:#F0D9B5}
 .dot.Black{border-color:#D2A06E}
-td button{background:#3B2723;border:1px solid #4C312A}td button.zero{color:#8A7260}td button.neg{background:#8E2F22;color:#FBEBD3}
+td button{background:#2D1C17;border:1px solid #3B2721}td button.zero{color:#8A7260}td button.neg{background:#7A2A20;color:#FBEBD3}
 .ticks{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto}
 .tick{display:flex;align-items:center;gap:10px;margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);font-size:1rem}
 .tick input{width:22px;height:22px;accent-color:#B8603C;flex:none}.tick span{flex:1}.tick small{color:var(--muted)}
@@ -149,7 +149,7 @@ textarea.f{width:100%;resize:vertical;min-height:110px}
 <div id="toast" class="toast" hidden></div>
 
 <script>
-const APP_VERSION = "v6 (2026-11-21)";
+const APP_VERSION = "v7 (2026-11-21)";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const f = n => Math.round(n).toLocaleString("en-IN");
@@ -258,7 +258,7 @@ function boot(){
 const apiKey = () => LS.get("sb-gkey") || "";
 function scanPrompt(kind, brands){
   return `You are reading a photo of handwritten Indian textile trade paperwork for a gamchha (cotton towel) wholesaler. The photo is a ${kind === "out" ? "customer ORDER FORM (indent form)" : "STOCK BOOK page"}.
-Known brands: ${brands.join(", ")}. Colours: White, Orange, Red, Yellow, Gold, Black. Shorthand: O=Orange, R=Red, Y=Yellow, G or M=Gold, W=White, WC=World Cup. "Mango" means Gold and "Lemon" means Yellow (Gold and Mango are the same colour; Lemon and Yellow are the same colour).
+Known brands: ${brands.join(", ")}. Colours: White, Orange, Red, Yellow, Gold, Black. Shorthand: O=Orange, R=Red, Y=Yellow, G or M=Gold, W=White, WC=World Cup. "Mango" means Gold, "Lemon" means Yellow and "Fanta" means Orange (Gold and Mango are the same colour; Lemon and Yellow are the same colour; Fanta and Orange are the same colour).
 Rules:
 - 1 bale = 600 pieces. If a quantity is written in bales ("One Bale", "2 bales"), convert it to pieces: One Bale = 600 pcs, Two Bale = 1200 pcs. Always return pieces.
 - A heading like "Gamchha Jupiter Colour: Red 200, Orange 200" means separate lines Jupiter Red 200, Jupiter Orange 200. "Gamchha Tata White 300pc" means Tata White 300. "Popular Colour Orange 100" means Popular Orange 100.

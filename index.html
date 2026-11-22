@@ -132,6 +132,14 @@ textarea.f{width:100%;resize:vertical;min-height:110px}
 @keyframes sdrop{to{opacity:1;transform:none}}@keyframes sbar{to{transform:scaleX(1)}}@keyframes sfade{to{opacity:1}}
 
 .top .sync{display:none}
+.pv{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:8px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 22px rgba(0,0,0,.4)}
+.pvh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pvh .btn{min-height:36px;padding:0 10px;font-size:.8rem;margin-left:6px}
+.pvi{width:100%;height:30vh;object-fit:contain;background:#000;border-radius:10px;cursor:zoom-in}
+.pvt{max-height:26vh;overflow:auto;white-space:pre-wrap;font-size:.9rem;background:var(--surface);border-radius:10px;padding:8px 10px;word-break:break-word}
+.zoomwrap{overflow:auto;max-height:62vh;background:#000;border-radius:10px;touch-action:pan-x pan-y}
+.zoomwrap img{display:block;width:100%;max-width:none}
+.logbtns{display:flex;gap:8px;flex-wrap:wrap}
 .gear{opacity:.75;flex:none}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .opts button{min-height:64px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;line-height:1.2}
@@ -331,7 +339,7 @@ function applyTheme(t){try{var g=document.getElementById("glass-css");if(g)g.med
 <div id="toast" class="toast" hidden></div>
 
 <script>
-const APP_VERSION = "v11 (2026-11-22)";
+const APP_VERSION = "v12 (2026-11-22)";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const f = n => Math.round(n).toLocaleString("en-IN");
@@ -385,6 +393,12 @@ function applyUndo(shop, body){
   e.lines.forEach(l => { shop.stock[l.k] = (shop.stock[l.k] || 0) + (e.kind === "set" ? l.from - l.to : -l.d); });
   e.undone = true; shop.rev++;
 }
+function applyDelete(shop, body){
+  const i = shop.log.findIndex(x => x.id === body.id); if (i < 0) return;
+  const e = shop.log[i];
+  if (!e.undone) e.lines.forEach(l => { shop.stock[l.k] = (shop.stock[l.k] || 0) + (e.kind === "set" ? l.from - l.to : -l.d); });
+  shop.log.splice(i, 1); shop.rev++;
+}
 function applyBrand(shop, body){
   const name = String(body.name || "").trim().slice(0, 30);
   if (!name) throw new Error("name is empty");
@@ -416,6 +430,7 @@ async function mutate(path, body){
     if (path === "/entries") applyEntry(shop, body);
     else if (path === "/set") applySet(shop, body);
     else if (path === "/undo") applyUndo(shop, body);
+    else if (path === "/delete") applyDelete(shop, body);
     else if (path === "/brands") applyBrand(shop, body);
     else if (path === "/clearbrand") applyClearBrand(shop, body);
     else if (path === "/clearbrands"){ (body.brands || []).forEach(x => { if (!shop.brands.includes(x)) throw new Error("unknown brand"); }); (body.brands || []).forEach(x => applyClearBrand(shop, {brand: x})); }
@@ -669,7 +684,7 @@ function renderAdd(){
 
 /* ---------- review ---------- */
 function startReview(kind, lines, meta){
-  R = {kind, lines, docNo: meta.docNo || "", party: meta.party || "", date: meta.date || "", notes: meta.notes || ""};
+  R = {kind, lines, docNo: meta.docNo || "", party: meta.party || "", date: meta.date || "", notes: meta.notes || "", preview: meta.preview || null, pvHide: false};
   if (kind === "in"){
     const prev = new Set(); S.log.filter(e => !e.undone && e.kind === "in").forEach(e => e.lines.forEach(l => prev.add(l.k + "|" + l.d)));
     R.lines.forEach(l => { if (prev.has(key(l.brand, l.colour) + "|" + l.pcs)){ l.include = false; l.note = (l.note ? l.note + " · " : "") + "This same number was already entered. Tick it if it is a new line."; } });
@@ -684,9 +699,23 @@ function reviewState(){
   const total = inc.reduce((a, l) => a + (Number.isFinite(l.pcs) ? l.pcs : 0), 0);
   return {inc, total, ready: inc.length > 0 && inc.every(lineReady)};
 }
+function pvHtml(){
+  if (!R || !R.preview) return "";
+  const p = R.preview;
+  return `<div class="pv"><div class="pvh"><b>${p.src ? "Photo" : "Message"}</b><span><button class="btn" data-act="pv-zoom">Enlarge</button><button class="btn" data-act="pv-toggle">${R.pvHide ? "Show preview" : "Hide preview"}</button></span></div>` +
+    (R.pvHide ? "" : p.src ? `<img class="pvi" src="${p.src}" alt="" data-act="pv-zoom">` : `<div class="pvt">${esc(p.text)}</div>`) + `</div>`;
+}
+let zlevel = 1;
+function openPreview(){
+  if (!R || !R.preview) return;
+  const p = R.preview; zlevel = 1;
+  if (p.src) openSheet(`<h3>Photo</h3><div class="zoomwrap"><img id="zi" src="${p.src}" alt=""></div>
+    <div class="btns"><button class="btn" data-act="zoom-out">−</button><button class="btn" data-act="zoom-in">+</button></div><button class="btn" data-act="close">Close</button>`);
+  else openSheet(`<h3>Message</h3><div class="pvt" style="max-height:62vh">${esc(p.text)}</div><button class="btn" data-act="close">Close</button>`);
+}
 function renderReview(){
   const cls = R.kind === "in" ? "add" : "less";
-  $("#main").innerHTML = `<div class="card rev">
+  $("#main").innerHTML = pvHtml() + `<div class="card rev">
     <h2>${R.kind === "in" ? "Stock book: adds stock" : "Order form: reduces stock"}</h2>
     <p class="hint">Check the numbers and fix any mistakes. Yellow lines are not saved until you confirm them.</p>
     <div class="meta"><div><label for="r-no">Form number</label><input id="r-no" class="f" value="${esc(R.docNo)}"></div>
@@ -707,7 +736,7 @@ function lineHtml(l){
     <select class="f" data-f="brand" aria-label="Brand"><option value="">Brand?</option>${S.brands.map(b => `<option${b === l.brand ? " selected" : ""}>${esc(b)}</option>`).join("")}</select>
     <select class="f" data-f="colour" aria-label="Colour"><option value="">Colour?</option>${COLOURS.map(c => `<option${c === l.colour ? " selected" : ""}>${c}</option>`).join("")}</select>
     <input class="f q" data-f="pcs" inputmode="numeric" value="${Number.isFinite(l.pcs) ? l.pcs : ""}" placeholder="Pieces" aria-label="Pieces">
-    ${l.note || (l.unclear && !l.ok) ? `<div class="msg"><span>${esc(l.note || "Not clear")}</span>${l.unclear && !l.ok ? `<button data-act="confirm-line" data-lid="${l.id}">OK, I checked</button>` : ""}</div>` : ""}
+    ${l.note || (l.unclear && !l.ok) ? `<div class="msg"><span>${esc(l.note || "Not clear")}</span>${!l.brand && l.rawBrand ? `<button data-act="new-brand-line" data-lid="${l.id}">Add "${esc(l.rawBrand)}" as new brand</button>` : ""}${l.unclear && !l.ok ? `<button data-act="confirm-line" data-lid="${l.id}">OK, I checked</button>` : ""}</div>` : ""}
   </div>`;
 }
 function refreshReview(){
@@ -744,7 +773,7 @@ function scanLines(out){
     const pcs = l.pcs !== null && l.pcs !== undefined && Number.isFinite(+l.pcs) ? Math.round(+l.pcs) : NaN;
     const unclear = !!l.unclear || !brand || !colour || !Number.isFinite(pcs);
     const note = [l.note, !brand ? "Brand not recognised" : "", !colour ? "Colour not recognised" : ""].filter(Boolean).join(" · ");
-    return {id: uid(), brand, colour, pcs, include: true, unclear, ok: false, note};
+    return {id: uid(), brand, colour, pcs, include: true, unclear, ok: false, note, rawBrand: brand ? "" : String(l.brand || "").trim().slice(0, 30), origUnclear: !!l.unclear};
   });
 }
 async function runScan(file, text){
@@ -759,7 +788,7 @@ async function runScan(file, text){
     scanning = false;
     if (!lines.length){ scanErr = text ? "No order lines found in this message. You can add them by hand." : "No lines found in this photo. You can add them by hand."; render(); return; }
     if (text){ pasteText = ""; pasteOpen = false; }
-    startReview(kind, lines, {docNo: out.doc_no || "", party: out.party || "", date: out.date || "", notes: out.notes || ""});
+    startReview(kind, lines, {docNo: out.doc_no || "", party: out.party || "", date: out.date || "", notes: out.notes || "", preview: text ? {text: String(text)} : {src: "data:image/jpeg;base64," + image}});
   } catch (e) {
     scanning = false;
     if (e.name === "AbortError") { /* stopped by user */ }
@@ -821,7 +850,7 @@ function renderLog(){
     const li = e.lines.map(l => { const [b, c] = l.k.split("|"); const v = e.kind === "set" ? `${f(l.from)} → ${f(l.to)}` : (l.d > 0 ? "+" : "−") + f(Math.abs(l.d));
       return `<li><span>${esc(b)} ${esc(c)}</span><b>${v}</b></li>`; }).join("");
     return `<article class="logrow ${e.undone ? "undone" : ""}"><header><span><span class="pill ${e.kind}">${lab}</span> ${e.docNo ? "#" + esc(e.docNo) : ""} ${e.party ? "· " + esc(e.party) : ""}</span><small>${d}</small></header><ul>${li}</ul>
-      ${e.undone ? `<small>Undone</small>` : `<div><button class="btn" data-act="undo" data-id="${esc(e.id)}">Undo this entry</button></div>`}</article>`;
+      <div class="logbtns">${e.undone ? `<small style="align-self:center">Undone</small>` : `<button class="btn" data-act="undo" data-id="${esc(e.id)}">Undo this entry</button>`}<button class="btn" data-act="del" data-id="${esc(e.id)}" data-u="${e.undone ? 1 : 0}">Delete</button></div></article>`;
   }).join("");
   $("#main").innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">${rows || '<div class="empty">Nothing yet. Add a stock book or order form entry on the Entry tab.</div>'}</div>`;
 }
@@ -865,6 +894,27 @@ document.addEventListener("click", async e => {
   else if (a === "cancel-review"){ R = null; render(); }
   else if (a === "confirm-review") confirmReview();
   else if (a === "undo"){ openSheet(`<h3>Are you sure?</h3><div class="note">This entry will be undone and the stock it changed will be put back.</div><div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn danger" data-act="undo-yes" data-id="${esc(b.dataset.id)}">Yes, undo</button></div>`); }
+  else if (a === "del"){ openSheet(`<h3>Delete this entry?</h3><div class="note">${b.dataset.u === "1" ? "This entry is already undone. It will only be removed from History." : "This entry will be removed completely and the stock it changed will be put back. This cannot be undone."}</div><div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn danger" data-act="del-yes" data-id="${esc(b.dataset.id)}">Yes, delete</button></div>`); }
+  else if (a === "del-yes"){ if (await mutate("/delete", {id: b.dataset.id})){ closeSheet(); render(); toast("Entry deleted"); } }
+  else if (a === "pv-toggle"){ if (R){ R.pvHide = !R.pvHide; const el = $(".pv"); if (el) el.outerHTML = pvHtml(); } }
+  else if (a === "pv-zoom") openPreview();
+  else if (a === "zoom-in" || a === "zoom-out"){ zlevel = Math.max(1, Math.min(4, zlevel + (a === "zoom-in" ? .5 : -.5))); const z = $("#zi"); if (z) z.style.width = (zlevel * 100) + "%"; }
+  else if (a === "new-brand-line"){
+    const l = R && R.lines.find(x => x.id === b.dataset.lid); if (!l) return;
+    openSheet(`<h3>Add new brand</h3><p class="hint">This name was found in the form. You can correct it before adding.</p><div><label for="nb2">Brand name</label><input id="nb2" class="f" maxlength="30" value="${esc(l.rawBrand)}" data-raw="${esc(l.rawBrand)}"></div><p id="nb2-err" class="err" role="alert"></p>
+      <div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="save-new-brand">Add</button></div>`, "#nb2");
+  }
+  else if (a === "save-new-brand"){
+    const inp = $("#nb2"), n = inp.value.trim(), raw = inp.dataset.raw.toLowerCase();
+    if (!n){ $("#nb2-err").textContent = "Enter a name."; return; }
+    if (S.brands.some(x => x.toLowerCase() === n.toLowerCase())){ $("#nb2-err").textContent = "This brand already exists."; return; }
+    if (await mutate("/brands", {name: n})){
+      R.lines.forEach(l => { if (!l.brand && l.rawBrand && l.rawBrand.toLowerCase() === raw){
+        l.brand = n; l.rawBrand = ""; l.note = String(l.note || "").split(" · ").filter(x => x && x !== "Brand not recognised").join(" · ");
+        l.unclear = !!l.origUnclear || !l.colour || !Number.isFinite(l.pcs); l.ok = false; } });
+      closeSheet(); renderReview(); toast("Brand added");
+    }
+  }
   else if (a === "undo-yes"){ if (await mutate("/undo", {id: b.dataset.id})){ closeSheet(); render(); toast("Entry undone"); } }
   else if (a === "dl") download(b.dataset.f);
   else if (a === "set-theme"){ LS.set("sb-theme", b.dataset.v); applyTheme(b.dataset.v); document.querySelectorAll("[data-act=set-theme]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === b.dataset.v))); }
@@ -984,7 +1034,11 @@ const TA = {
 "No stock in this brand. Removing it deletes it from the list and deletes its history lines.":"இந்த பிராண்டில் ஸ்டாக் இல்லை. நீக்கினால் லிஸ்டிலிருந்தும் அதன் ஹிஸ்டரி வரிகளும் நீக்கப்படும்.",
 "Back up first":"முதலில் பேக்கப் எடு",
 "New brand":"புதிய பிராண்ட்","Brand name":"பிராண்ட் பெயர்","Enter a name.":"பெயரை உள்ளிடவும்.","This brand already exists.":"இந்த பிராண்ட் ஏற்கனவே உள்ளது.","Add":"சேர்",
-"Order":"ஆர்டர்","Stock correction":"ஸ்டாக் திருத்தம்","Undone":"Undo ஆனது","Undo this entry":"இந்த என்ட்ரியை Undo செய்",
+"Order":"ஆர்டர்","Stock correction":"ஸ்டாக் திருத்தம்","Undone":"Undo ஆனது","Delete":"நீக்கு","Delete this entry?":"இந்த என்ட்ரியை நீக்கவா?","Yes, delete":"ஆம், நீக்கு","Entry deleted":"என்ட்ரி நீக்கப்பட்டது",
+"This entry will be removed completely and the stock it changed will be put back. This cannot be undone.":"இந்த என்ட்ரி முழுவதுமாக நீக்கப்படும்; அது மாற்றிய ஸ்டாக் பழைய நிலைக்குத் திரும்பும். இதை திரும்பப் பெற முடியாது.",
+"This entry is already undone. It will only be removed from History.":"இந்த என்ட்ரி ஏற்கனவே Undo ஆகிவிட்டது. ஹிஸ்டரியிலிருந்து மட்டும் நீக்கப்படும்.",
+"Photo":"போட்டோ","Message":"மெசேஜ்","Enlarge":"பெரிதாக்கு","Hide preview":"Preview மறை","Show preview":"Preview காட்டு",
+"Add new brand":"புதிய பிராண்டைச் சேர்","This name was found in the form. You can correct it before adding.":"ஃபார்மில் இந்தப் பெயர் இருந்தது. சேர்க்கும் முன் திருத்தலாம்.","Brand added":"பிராண்ட் சேர்க்கப்பட்டது","Undo this entry":"இந்த என்ட்ரியை Undo செய்",
 "Nothing yet. Add a stock book or order form entry on the Entry tab.":"இன்னும் எதுவும் இல்லை. என்ட்ரி டேபில் ஸ்டாக் புக் அல்லது ஆர்டர் ஃபார்ம் என்ட்ரி சேர்க்கவும்.",
 "Are you sure?":"உறுதியா?","This entry will be undone and the stock it changed will be put back.":"இந்த என்ட்ரி Undo ஆகும்; அது மாற்றிய ஸ்டாக் மீண்டும் பழைய நிலைக்கு வரும்.","Yes, undo":"ஆம், Undo செய்"
 };
@@ -1000,6 +1054,7 @@ const TA_RE = [
  [/^No brand matches "(.*)"\. Add the brand on the Stock tab first\.$/, a => '"' + a + '" என்ற பிராண்ட் இல்லை. முதலில் ஸ்டாக் டேபில் பிராண்டைச் சேர்க்கவும்.'],
  [/^Review (\d+) lines? and update$/, a => a + " வரிகளைச் சரிபார்த்து அப்டேட் செய்"],
  [/^(\d+) lines?: ([+−])([\d,]+) pcs$/, (a, s, n) => a + " வரிகள்: " + s + n + " பீஸ்"],
+ [/^Add "(.*)" as new brand$/, a => '"' + a + '" ஐ புதிய பிராண்டாகச் சேர்'],
  [/^Scan note: (.*)$/, a => "ஸ்கேன் குறிப்பு: " + a],
  [/^Form number (.+) is already entered\. Entering it again will change the stock twice\.$/, a => "ஃபார்ம் எண் " + a + " ஏற்கனவே உள்ளிடப்பட்டுள்ளது. மீண்டும் உள்ளிட்டால் ஸ்டாக் இரண்டு முறை மாறும்."],
  [/^Total (.+)$/, a => a + " மொத்தம்"],
@@ -1024,7 +1079,7 @@ function trText(core){
   return null;
 }
 function xText(n){
-  const p = n.parentNode; if (!p || /^(SCRIPT|STYLE|TEXTAREA)$/.test(p.nodeName) || (p.closest && p.closest("#splash"))) return;
+  const p = n.parentNode; if (!p || /^(SCRIPT|STYLE|TEXTAREA)$/.test(p.nodeName) || (p.closest && p.closest("#splash, .pvt"))) return;
   let rec = orig.get(n); if (rec && n.nodeValue !== rec.out) rec = null;
   const en = rec ? rec.en : n.nodeValue, core = en.replace(/\s+/g, " ").trim();
   if (!core) return;

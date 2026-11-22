@@ -137,8 +137,8 @@ textarea.f{width:100%;resize:vertical;min-height:110px}
 .pvh .btn{min-height:36px;padding:0 10px;font-size:.8rem;margin-left:6px}
 .pvi{width:100%;height:30vh;object-fit:contain;background:#000;border-radius:10px;cursor:zoom-in}
 .pvt{max-height:26vh;overflow:auto;white-space:pre-wrap;font-size:.9rem;background:var(--surface);border-radius:10px;padding:8px 10px;word-break:break-word}
-.zoomwrap{overflow:auto;max-height:62vh;background:#000;border-radius:10px;touch-action:pan-x pan-y}
-.zoomwrap img{display:block;width:100%;max-width:none}
+.zv{position:relative;height:68vh;overflow:hidden;background:#000;border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none}
+.zv img{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;max-height:none;will-change:transform;-webkit-user-drag:none;pointer-events:none}
 .logbtns{display:flex;gap:8px;flex-wrap:wrap}
 .gear{opacity:.75;flex:none}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -339,7 +339,7 @@ function applyTheme(t){try{var g=document.getElementById("glass-css");if(g)g.med
 <div id="toast" class="toast" hidden></div>
 
 <script>
-const APP_VERSION = "v12 (2026-11-22)";
+const APP_VERSION = "v13 (2026-11-22)";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const f = n => Math.round(n).toLocaleString("en-IN");
@@ -705,12 +705,54 @@ function pvHtml(){
   return `<div class="pv"><div class="pvh"><b>${p.src ? "Photo" : "Message"}</b><span><button class="btn" data-act="pv-zoom">Enlarge</button><button class="btn" data-act="pv-toggle">${R.pvHide ? "Show preview" : "Hide preview"}</button></span></div>` +
     (R.pvHide ? "" : p.src ? `<img class="pvi" src="${p.src}" alt="" data-act="pv-zoom">` : `<div class="pvt">${esc(p.text)}</div>`) + `</div>`;
 }
-let zlevel = 1;
+function initZoom(){
+  const zv = $("#zv"), im = $("#zi"); if (!zv || !im) return;
+  let s = 1, tx = 0, ty = 0, s0 = 1, ready = false;
+  const ptr = new Map(); let lastTap = 0, tapX = 0, tapY = 0, moved = 0, prevD = 0, prevMx = 0, prevMy = 0;
+  const W = () => zv.clientWidth, H = () => zv.clientHeight;
+  const clampT = () => {
+    const w = im.naturalWidth * s, h = im.naturalHeight * s;
+    tx = w <= W() ? (W() - w) / 2 : Math.min(0, Math.max(W() - w, tx));
+    ty = h <= H() ? (H() - h) / 2 : Math.min(0, Math.max(H() - h, ty));
+  };
+  const apply = () => { clampT(); im.style.transform = `translate(${tx}px,${ty}px) scale(${s})`; };
+  const zoomAt = (ns, cx, cy) => { ns = Math.max(s0, Math.min(s0 * 8, ns)); const ix = (cx - tx) / s, iy = (cy - ty) / s; s = ns; tx = cx - ix * s; ty = cy - iy * s; };
+  const fit = () => { s0 = s = Math.min(W() / im.naturalWidth, H() / im.naturalHeight); tx = ty = 0; im.style.width = im.naturalWidth + "px"; im.style.height = im.naturalHeight + "px"; ready = true; apply(); };
+  if (im.complete && im.naturalWidth) fit(); else im.onload = fit;
+  const pos = e => { const r = zv.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
+  const mid = () => { const a = [...ptr.values()]; return {x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2, d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y)}; };
+  zv.addEventListener("pointerdown", e => {
+    if (!ready) return; try { zv.setPointerCapture(e.pointerId); } catch (x) {}
+    ptr.set(e.pointerId, pos(e)); moved = 0;
+    if (ptr.size === 2){ const m = mid(); prevD = m.d; prevMx = m.x; prevMy = m.y; }
+  });
+  zv.addEventListener("pointermove", e => {
+    if (!ptr.has(e.pointerId)) return;
+    const p = pos(e), old = ptr.get(e.pointerId);
+    if (ptr.size === 1){ tx += p.x - old.x; ty += p.y - old.y; moved += Math.abs(p.x - old.x) + Math.abs(p.y - old.y); ptr.set(e.pointerId, p); apply(); }
+    else if (ptr.size === 2){
+      ptr.set(e.pointerId, p); const m = mid(); moved += 10;
+      if (prevD > 0) zoomAt(s * (m.d / prevD), prevMx, prevMy);
+      tx += m.x - prevMx; ty += m.y - prevMy; prevD = m.d; prevMx = m.x; prevMy = m.y; apply();
+    }
+  });
+  const up = e => {
+    if (!ptr.has(e.pointerId)) return;
+    const p = ptr.get(e.pointerId); ptr.delete(e.pointerId);
+    if (ptr.size === 1){ const m = [...ptr.values()][0]; prevD = 0; }
+    if (ptr.size === 0 && moved < 12 && e.type === "pointerup"){
+      const now = Date.now();
+      if (now - lastTap < 320 && Math.hypot(p.x - tapX, p.y - tapY) < 40){ if (s > s0 * 1.05){ s = s0; tx = ty = 0; } else zoomAt(s0 * 3, p.x, p.y); apply(); lastTap = 0; }
+      else { lastTap = now; tapX = p.x; tapY = p.y; }
+    }
+  };
+  zv.addEventListener("pointerup", up); zv.addEventListener("pointercancel", up);
+  zv.addEventListener("wheel", e => { e.preventDefault(); const p = pos(e); zoomAt(s * (e.deltaY < 0 ? 1.2 : 1 / 1.2), p.x, p.y); apply(); }, {passive: false});
+}
 function openPreview(){
   if (!R || !R.preview) return;
-  const p = R.preview; zlevel = 1;
-  if (p.src) openSheet(`<h3>Photo</h3><div class="zoomwrap"><img id="zi" src="${p.src}" alt=""></div>
-    <div class="btns"><button class="btn" data-act="zoom-out">−</button><button class="btn" data-act="zoom-in">+</button></div><button class="btn" data-act="close">Close</button>`);
+  const p = R.preview;
+  if (p.src){ openSheet(`<h3>Photo</h3><p class="hint">Pinch with two fingers to zoom. Drag to move. Double-tap to zoom in or out.</p><div class="zv" id="zv"><img id="zi" src="${p.src}" alt="" draggable="false"></div><button class="btn" data-act="close">Close</button>`); initZoom(); }
   else openSheet(`<h3>Message</h3><div class="pvt" style="max-height:62vh">${esc(p.text)}</div><button class="btn" data-act="close">Close</button>`);
 }
 function renderReview(){
@@ -898,7 +940,6 @@ document.addEventListener("click", async e => {
   else if (a === "del-yes"){ if (await mutate("/delete", {id: b.dataset.id})){ closeSheet(); render(); toast("Entry deleted"); } }
   else if (a === "pv-toggle"){ if (R){ R.pvHide = !R.pvHide; const el = $(".pv"); if (el) el.outerHTML = pvHtml(); } }
   else if (a === "pv-zoom") openPreview();
-  else if (a === "zoom-in" || a === "zoom-out"){ zlevel = Math.max(1, Math.min(4, zlevel + (a === "zoom-in" ? .5 : -.5))); const z = $("#zi"); if (z) z.style.width = (zlevel * 100) + "%"; }
   else if (a === "new-brand-line"){
     const l = R && R.lines.find(x => x.id === b.dataset.lid); if (!l) return;
     openSheet(`<h3>Add new brand</h3><p class="hint">This name was found in the form. You can correct it before adding.</p><div><label for="nb2">Brand name</label><input id="nb2" class="f" maxlength="30" value="${esc(l.rawBrand)}" data-raw="${esc(l.rawBrand)}"></div><p id="nb2-err" class="err" role="alert"></p>
@@ -1037,7 +1078,7 @@ const TA = {
 "Order":"ஆர்டர்","Stock correction":"ஸ்டாக் திருத்தம்","Undone":"Undo ஆனது","Delete":"நீக்கு","Delete this entry?":"இந்த என்ட்ரியை நீக்கவா?","Yes, delete":"ஆம், நீக்கு","Entry deleted":"என்ட்ரி நீக்கப்பட்டது",
 "This entry will be removed completely and the stock it changed will be put back. This cannot be undone.":"இந்த என்ட்ரி முழுவதுமாக நீக்கப்படும்; அது மாற்றிய ஸ்டாக் பழைய நிலைக்குத் திரும்பும். இதை திரும்பப் பெற முடியாது.",
 "This entry is already undone. It will only be removed from History.":"இந்த என்ட்ரி ஏற்கனவே Undo ஆகிவிட்டது. ஹிஸ்டரியிலிருந்து மட்டும் நீக்கப்படும்.",
-"Photo":"போட்டோ","Message":"மெசேஜ்","Enlarge":"பெரிதாக்கு","Hide preview":"Preview மறை","Show preview":"Preview காட்டு",
+"Photo":"போட்டோ","Pinch with two fingers to zoom. Drag to move. Double-tap to zoom in or out.":"இரண்டு விரல்களால் ஜூம் செய்யவும். ஒரு விரலால் இழுத்து நகர்த்தவும். இரு முறை தட்டினால் ஜூம் இன் / அவுட்.","Message":"மெசேஜ்","Enlarge":"பெரிதாக்கு","Hide preview":"Preview மறை","Show preview":"Preview காட்டு",
 "Add new brand":"புதிய பிராண்டைச் சேர்","This name was found in the form. You can correct it before adding.":"ஃபார்மில் இந்தப் பெயர் இருந்தது. சேர்க்கும் முன் திருத்தலாம்.","Brand added":"பிராண்ட் சேர்க்கப்பட்டது","Undo this entry":"இந்த என்ட்ரியை Undo செய்",
 "Nothing yet. Add a stock book or order form entry on the Entry tab.":"இன்னும் எதுவும் இல்லை. என்ட்ரி டேபில் ஸ்டாக் புக் அல்லது ஆர்டர் ஃபார்ம் என்ட்ரி சேர்க்கவும்.",
 "Are you sure?":"உறுதியா?","This entry will be undone and the stock it changed will be put back.":"இந்த என்ட்ரி Undo ஆகும்; அது மாற்றிய ஸ்டாக் மீண்டும் பழைய நிலைக்கு வரும்.","Yes, undo":"ஆம், Undo செய்"

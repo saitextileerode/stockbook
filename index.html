@@ -135,7 +135,7 @@ textarea.f{width:100%;resize:vertical;min-height:110px}
 .pv{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:8px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 22px rgba(0,0,0,.4)}
 .pvh{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .pvh .btn{min-height:36px;padding:0 10px;font-size:.8rem;margin-left:6px}
-.pvi{width:100%;height:30vh;object-fit:contain;background:#000;border-radius:10px;cursor:zoom-in}
+.zv.pvz{height:30vh}
 .pvt{max-height:26vh;overflow:auto;white-space:pre-wrap;font-size:.9rem;background:var(--surface);border-radius:10px;padding:8px 10px;word-break:break-word}
 .zv{position:relative;height:68vh;overflow:hidden;background:#000;border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none}
 .zv img{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;max-height:none;will-change:transform;-webkit-user-drag:none;pointer-events:none}
@@ -339,7 +339,7 @@ function applyTheme(t){try{var g=document.getElementById("glass-css");if(g)g.med
 <div id="toast" class="toast" hidden></div>
 
 <script>
-const APP_VERSION = "v13 (2026-11-22)";
+const APP_VERSION = "v14 (2026-11-22)";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const f = n => Math.round(n).toLocaleString("en-IN");
@@ -703,10 +703,10 @@ function pvHtml(){
   if (!R || !R.preview) return "";
   const p = R.preview;
   return `<div class="pv"><div class="pvh"><b>${p.src ? "Photo" : "Message"}</b><span><button class="btn" data-act="pv-zoom">Enlarge</button><button class="btn" data-act="pv-toggle">${R.pvHide ? "Show preview" : "Hide preview"}</button></span></div>` +
-    (R.pvHide ? "" : p.src ? `<img class="pvi" src="${p.src}" alt="" data-act="pv-zoom">` : `<div class="pvt">${esc(p.text)}</div>`) + `</div>`;
+    (R.pvHide ? "" : p.src ? `<div class="zv pvz" id="zvp"><img id="zip" src="${p.src}" alt="" draggable="false"></div>` : `<div class="pvt">${esc(p.text)}</div>`) + `</div>`;
 }
-function initZoom(){
-  const zv = $("#zv"), im = $("#zi"); if (!zv || !im) return;
+function initZoom(zv, im, fitW){
+  zv = zv || $("#zv"); im = im || $("#zi"); if (!zv || !im) return;
   let s = 1, tx = 0, ty = 0, s0 = 1, ready = false;
   const ptr = new Map(); let lastTap = 0, tapX = 0, tapY = 0, moved = 0, prevD = 0, prevMx = 0, prevMy = 0;
   const W = () => zv.clientWidth, H = () => zv.clientHeight;
@@ -717,7 +717,7 @@ function initZoom(){
   };
   const apply = () => { clampT(); im.style.transform = `translate(${tx}px,${ty}px) scale(${s})`; };
   const zoomAt = (ns, cx, cy) => { ns = Math.max(s0, Math.min(s0 * 8, ns)); const ix = (cx - tx) / s, iy = (cy - ty) / s; s = ns; tx = cx - ix * s; ty = cy - iy * s; };
-  const fit = () => { s0 = s = Math.min(W() / im.naturalWidth, H() / im.naturalHeight); tx = ty = 0; im.style.width = im.naturalWidth + "px"; im.style.height = im.naturalHeight + "px"; ready = true; apply(); };
+  const fit = () => { s0 = Math.min(W() / im.naturalWidth, H() / im.naturalHeight); s = fitW ? Math.max(s0, W() / im.naturalWidth) : s0; tx = ty = 0; im.style.width = im.naturalWidth + "px"; im.style.height = im.naturalHeight + "px"; ready = true; apply(); };
   if (im.complete && im.naturalWidth) fit(); else im.onload = fit;
   const pos = e => { const r = zv.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
   const mid = () => { const a = [...ptr.values()]; return {x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2, d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y)}; };
@@ -769,6 +769,7 @@ function renderReview(){
     <div class="sum ${cls}" id="r-sum"></div>
     <div class="btns"><button class="btn" data-act="cancel-review">Cancel</button><button class="btn primary" id="r-ok" data-act="confirm-review">Update</button></div>
   </div>`;
+  initZoom($("#zvp"), $("#zip"), true);
   refreshReview();
 }
 function lineHtml(l){
@@ -938,7 +939,7 @@ document.addEventListener("click", async e => {
   else if (a === "undo"){ openSheet(`<h3>Are you sure?</h3><div class="note">This entry will be undone and the stock it changed will be put back.</div><div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn danger" data-act="undo-yes" data-id="${esc(b.dataset.id)}">Yes, undo</button></div>`); }
   else if (a === "del"){ openSheet(`<h3>Delete this entry?</h3><div class="note">${b.dataset.u === "1" ? "This entry is already undone. It will only be removed from History." : "This entry will be removed completely and the stock it changed will be put back. This cannot be undone."}</div><div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn danger" data-act="del-yes" data-id="${esc(b.dataset.id)}">Yes, delete</button></div>`); }
   else if (a === "del-yes"){ if (await mutate("/delete", {id: b.dataset.id})){ closeSheet(); render(); toast("Entry deleted"); } }
-  else if (a === "pv-toggle"){ if (R){ R.pvHide = !R.pvHide; const el = $(".pv"); if (el) el.outerHTML = pvHtml(); } }
+  else if (a === "pv-toggle"){ if (R){ R.pvHide = !R.pvHide; const el = $(".pv"); if (el){ el.outerHTML = pvHtml(); initZoom($("#zvp"), $("#zip"), true); } } }
   else if (a === "pv-zoom") openPreview();
   else if (a === "new-brand-line"){
     const l = R && R.lines.find(x => x.id === b.dataset.lid); if (!l) return;

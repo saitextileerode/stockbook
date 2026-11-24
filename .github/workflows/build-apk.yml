@@ -78,3 +78,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "v${{ github.run_number }}" StockBook.apk --title "Stock Book v${{ github.run_number }}" --notes "Download StockBook.apk and install on your phone."
+        
